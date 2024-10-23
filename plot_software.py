@@ -83,11 +83,16 @@ class PlotApp:
         self.submit_button = tk.Button(self.control_frame, text="Submit", command=self.submit)
         self.submit_button.pack(pady=10)
 
+        # Reset Button
+        self.reset_button = tk.Button(self.control_frame, text="Reset View", command=self.reset_view)
+        self.reset_button.pack(pady=10)
+
         # To hold the extracted column names and their corresponding checkboxes
         self.column_names = []
         self.checkbox_vars = {}  # To store the checkbox variables for each column
         self.data_frames = []  # List to store data from multiple files
         self.file_directory = ""  # Directory of the files
+        self.zoomed_dataframe = None  # To store the zoomed data
 
     def browse_file(self):
         # Allow the user to select any file type
@@ -196,22 +201,29 @@ class PlotApp:
             cb.pack(anchor='w')
 
     def submit(self):
-        # Get the columns that are checked
         selected_columns = [col for col, var in self.checkbox_vars.items() if var.get()]
-
+    
         # Get the selected index column from the dropdown
         selected_index_column = self.index_column_dropdown.get()
-
+    
         if self.data_frames and selected_columns and selected_index_column:
             # Display selected columns for verification
             self.selected_columns_display.config(text="\n".join(selected_columns))
-
+    
             # Ask for confirmation before plotting
             if messagebox.askyesno("Confirm Plot", "Do you want to plot the selected columns?"):
+                # Use zoomed_dataframe if it exists, otherwise use the original data
+                if self.zoomed_dataframe is not None:
+                    data_to_plot = self.zoomed_dataframe
+                    print("Using zoomed_dataframe for plotting.")
+                else:
+                    data_to_plot = self.data_frames[0]
+                    print("Using original data for plotting.")
+    
                 # Plot the selected columns with the selected index
-                self.plot_columns(selected_columns, selected_index_column, self.file_directory)
+                self.plot_columns(data_to_plot, selected_columns, selected_index_column, self.file_directory)
 
-    def plot_columns(self, columns, index_column, save_path):
+    def plot_columns(self, data, columns, index_column, save_path):
         fig, ax_primary = plt.subplots(figsize=(10, 6))
 
         # Create secondary and tertiary y-axes
@@ -229,46 +241,44 @@ class PlotApp:
         # Store the lines for toggling later
         all_lines = []
 
-        # Loop through each dataframe (file)
-        for i, data in enumerate(self.data_frames):
-            # Determine the x-axis based on the selected index column
-            if index_column == 'Serial Number':
-                x_axis = np.arange(len(data))  # Use row numbers as the x-axis
-                ax_primary.set_xlabel("Serial Number")
-            elif index_column == 'Time':
-                if not pd.api.types.is_datetime64_any_dtype(data['Time']):
-                    data['Time'] = pd.to_datetime(data['Time'], errors='coerce')
-                x_axis = data['Time']
-                ax_primary.set_xlabel("Time")
-            else:
-                raise ValueError(f"Unknown index column: {index_column}")
+        # Determine the x-axis based on the selected index column
+        if index_column == 'Serial Number':
+            x_axis = np.arange(len(data))  # Use row numbers as the x-axis
+            ax_primary.set_xlabel("Serial Number")
+        elif index_column == 'Time':
+            if not pd.api.types.is_datetime64_any_dtype(data['Time']):
+                data['Time'] = pd.to_datetime(data['Time'], errors='coerce')
+            x_axis = data['Time']
+            ax_primary.set_xlabel("Time")
+        else:
+            raise ValueError(f"Unknown index column: {index_column}")
 
-            # Assign columns to the different y-axes
-            for j, col in enumerate(columns):
-                if col in data.columns:
-                    numeric_data = pd.to_numeric(data[col], errors='coerce')
+        # Assign columns to the different y-axes
+        for j, col in enumerate(columns):
+            if col in data.columns:
+                numeric_data = pd.to_numeric(data[col], errors='coerce')
 
-                    # Check if there are valid numeric values to plot
-                    if numeric_data.notna().any():
-                        trace_name = f"File {i + 1}: {col}"
+                # Check if there are valid numeric values to plot
+                if numeric_data.notna().any():
+                    trace_name = f"{col}"
 
-                        # Get a unique color for each parameter
-                        color = color_palette(j % len(color_palette.colors))
+                    # Get a unique color for each parameter
+                    color = color_palette(j % len(color_palette.colors))
 
-                        # Plot on the primary, secondary, or tertiary y-axis based on index
-                        if j % 3 == 0:  # First column goes on the primary y-axis
-                            line, = ax_primary.plot(x_axis, numeric_data, label=trace_name, color=color, picker=True)
-                        elif j % 3 == 1:  # Second column goes on the secondary y-axis
-                            line, = ax_secondary.plot(x_axis, numeric_data, label=trace_name, color=color, picker=True)
-                        elif j % 3 == 2:  # Third column goes on the tertiary y-axis
-                            line, = ax_tertiary.plot(x_axis, numeric_data, label=trace_name, color=color, picker=True)
-                       
-                        all_lines.append(line)  # Store the line for toggling later
+                    # Plot on the primary, secondary, or tertiary y-axis based on index
+                    if j % 3 == 0:  # First column goes on the primary y-axis
+                        line, = ax_primary.plot(x_axis, numeric_data, label=trace_name, color=color, picker=True)
+                    elif j % 3 == 1:  # Second column goes on the secondary y-axis
+                        line, = ax_secondary.plot(x_axis, numeric_data, label=trace_name, color=color, picker=True)
+                    elif j % 3 == 2:  # Third column goes on the tertiary y-axis
+                        line, = ax_tertiary.plot(x_axis, numeric_data, label=trace_name, color=color, picker=True)
+                   
+                    all_lines.append(line)  # Store the line for toggling later
 
-                    else:
-                        print(f"Column '{col}' contains no valid numeric data after conversion.")
                 else:
-                    print(f"Column '{col}' not found in file {i + 1}")
+                    print(f"Column '{col}' contains no valid numeric data after conversion.")
+            else:
+                print(f"Column '{col}' not found in data")
 
         ax_primary.set_title("Comparison Plot with Multiple Y-Axes")
 
@@ -317,6 +327,7 @@ class PlotApp:
         self.display_plot(fig, ax_primary)
 
     def display_plot(self, fig, legend):
+        print("<-----------------kamal--------------->")
         for widget in self.plot_frame.winfo_children():
             widget.destroy()
 
@@ -329,9 +340,14 @@ class PlotApp:
         canvas._tkcanvas.pack(fill=tk.BOTH, expand=True)
 
         # Connect the pick event to toggle visibility
+        print("1")
         fig.canvas.mpl_connect('pick_event', self.toggle_visibility)
 
+        # Connect the zoom event to capture the zoomed area
+        print("2")
+        fig.canvas.mpl_connect('button_release_event', self.on_zoom)
 
+        print("3")
         # Connect the legend click event to toggle visibility
         for legend_line, original_line in zip(legend.get_lines(), fig.axes[0].get_lines()):
             legend_line.set_picker(True)
@@ -345,7 +361,7 @@ class PlotApp:
         visible = not line.get_visible()
         line.set_visible(visible)
         line.figure.canvas.draw()
-        print("Toggle")
+        # print("Toggle")
 
     def toggle_legend_visibility(self, event):
         legend_line = event.artist
@@ -355,6 +371,30 @@ class PlotApp:
         legend_line.set_alpha(1.0 if visible else 0.2)
         original_line.figure.canvas.draw()
         print("Toggle Legend")
+
+    def on_zoom(self, event):
+        print("on_1")
+        if event.button == 1:  # Left mouse button
+            print("on_2")
+            ax = event.inaxes
+            if ax is not None:
+                xlim = ax.get_xlim()
+                ylim = ax.get_ylim()
+
+                print(f"Zoom limits: xlim={xlim}, ylim={ylim}")
+
+                # Filter the data based on the zoomed area
+                if self.index_column_dropdown.get() == 'Serial Number':
+                    self.zoomed_dataframe = self.data_frames[0][(self.data_frames[0]['Serial Number'] >= xlim[0]) & (self.data_frames[0]['Serial Number'] <= xlim[1])]
+                elif self.index_column_dropdown.get() == 'Time':
+                    self.zoomed_dataframe = self.data_frames[0][(self.data_frames[0]['Time'] >= pd.to_datetime(xlim[0])) & (self.data_frames[0]['Time'] <= pd.to_datetime(xlim[1]))]
+
+                print("Zoomed DataFrame:")
+                print(self.zoomed_dataframe)
+
+    def reset_view(self):
+        self.zoomed_dataframe = None
+        self.submit()
 
 if __name__ == "__main__":
     root = tk.Tk()
