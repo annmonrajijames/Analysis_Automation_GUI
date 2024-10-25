@@ -326,10 +326,11 @@ class PlotApp:
             # Proceed with the final selected columns
             messagebox.showinfo("Final Selection", f"Final selected columns: {', '.join(final_selected_columns)}")
 
-            # Update the plot with the final selected columns
-            self.update_plot(final_selected_columns)
+            # Update the plot with the final selected columns without resetting zoom
+            self.update_plot(final_selected_columns, retain_zoom=True)
         else:
             messagebox.showerror("Error", "Please select at least one column.")
+
  
     def plot_columns(self, selected_columns, index_column, file_directory):
         # Clear previous plots if necessary
@@ -393,7 +394,16 @@ class PlotApp:
         toolbar.home = lambda: (self.ax_primary.set_xlim(None), self.ax_primary.set_ylim(None),
                                 [ax.set_ylim(None) for ax in self.y_axes[1:]])
 
-    def update_plot(self, selected_columns):
+    def update_plot(self, selected_columns, retain_zoom=False):
+        # Get the current axes limits if retaining zoom
+        if retain_zoom:
+            xlim = self.ax_primary.get_xlim()
+            ylim_primary = self.ax_primary.get_ylim()
+            ylim_secondary = [ax.get_ylim() for ax in self.y_axes[1:]]  # Get ylim for all secondary axes
+        else:
+            ylim_primary = None
+            ylim_secondary = []
+
         # Clear the current plot without resetting the figure
         self.ax_primary.cla()
         for ax in self.y_axes[1:]:
@@ -434,8 +444,16 @@ class PlotApp:
 
         self.ax_primary.legend(handles, labels, loc='upper left')
 
+        # Restore the axes limits if retaining zoom
+        if retain_zoom:
+            self.ax_primary.set_xlim(xlim)
+            self.ax_primary.set_ylim(ylim_primary)
+            for ax, ylim in zip(self.y_axes[1:], ylim_secondary):
+                ax.set_ylim(ylim)
+
         # Redraw the canvas without affecting the zoom level
         self.fig.canvas.draw_idle()
+
 
 # Create the application window
 if __name__ == "__main__":
