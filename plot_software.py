@@ -45,7 +45,6 @@ class PlotApp:
         self.main_canvas.yview_scroll(-1 * int((event.delta / 120)), "units")
 
     def build_ui(self):
-
         """Build the UI inside the scrollable page_frame."""
         # Control frame on the left
         self.control_frame = tk.Frame(self.page_frame)
@@ -141,7 +140,7 @@ class PlotApp:
         self.ax_secondary = None
         self.ax_tertiary = None
         self.plot_initialized = False
-
+ 
     def browse_file(self):
         # Allow the user to select any file type
         file_paths = filedialog.askopenfilenames(filetypes=[("All files", "*.*")])
@@ -331,7 +330,6 @@ class PlotApp:
             self.update_plot(final_selected_columns)
         else:
             messagebox.showerror("Error", "Please select at least one column.")
-
  
     def plot_columns(self, selected_columns, index_column, file_directory):
         # Clear previous plots if necessary
@@ -340,6 +338,9 @@ class PlotApp:
 
         # Create a new figure and axes
         self.fig, self.ax_primary = plt.subplots(figsize=(10, 6))
+        
+        # List to keep track of all y-axes
+        self.y_axes = [self.ax_primary]  # Start with primary y-axis
 
         # Loop through selected columns and plot each
         for i, col in enumerate(selected_columns):
@@ -347,26 +348,31 @@ class PlotApp:
                 # Ensure that index_column is numeric and usable for plotting
                 x = df[index_column]  # Use the selected index column here
                 y = df[col]
-                if i == 0:  # Primary Y-axis
-                    self.ax_primary.plot(x, y, label=col, color='blue')  # Primary line color
-                    self.ax_primary.set_ylabel("Primary Y-axis Values")
-                elif i == 1:  # Secondary Y-axis
-                    self.ax_secondary = self.ax_primary.twinx()
-                    self.ax_secondary.plot(x, y, label=col, color='orange')  # Secondary line color
-                    self.ax_secondary.set_ylabel("Secondary Y-axis Values")
-                elif i == 2:  # Tertiary Y-axis
-                    self.ax_tertiary = self.ax_primary.twinx()
-                    self.ax_tertiary.spines['right'].set_position(('outward', 60))  # Offset the tertiary axis
-                    self.ax_tertiary.plot(x, y, label=col, color='green')  # Tertiary line color
+
+                # Create a new y-axis for every new parameter
+                if i > 0:  # For secondary and tertiary y-axes
+                    new_ax = self.ax_primary.twinx()
+                    new_ax.spines['right'].set_position(('outward', 60 * (i - 1)))  # Offset each new axis
+                    self.y_axes.append(new_ax)  # Keep track of all y-axes
+                    ax = new_ax
+                else:
+                    ax = self.ax_primary
+
+                ax.plot(x, y, label=col, color=plt.cm.viridis(i / len(selected_columns)))  # Different colors
+                ax.set_ylabel(f"{col} Values")  # Set label for each y-axis
 
         # Set labels and title
         self.ax_primary.set_xlabel(index_column)
         self.ax_primary.set_title("Data Plot")
-        self.ax_primary.legend(loc='upper left')
-        if self.ax_secondary:
-            self.ax_secondary.legend(loc='upper right')
-        if self.ax_tertiary:
-            self.ax_tertiary.legend(loc='lower right')
+
+        # Update legends for all axes
+        handles, labels = self.ax_primary.get_legend_handles_labels()
+        for ax in self.y_axes[1:]:
+            h, l = ax.get_legend_handles_labels()
+            handles.extend(h)
+            labels.extend(l)
+
+        self.ax_primary.legend(handles, labels, loc='upper left')
 
         # Add interactive data cursors
         mplcursors.cursor(hover=True)
@@ -385,16 +391,16 @@ class PlotApp:
 
         # Connect the toolbar's 'home' button to reset zoom
         toolbar.home = lambda: (self.ax_primary.set_xlim(None), self.ax_primary.set_ylim(None),
-                                self.ax_secondary.set_ylim(None) if self.ax_secondary else None,
-                                self.ax_tertiary.set_ylim(None) if self.ax_tertiary else None)
+                                [ax.set_ylim(None) for ax in self.y_axes[1:]])
 
     def update_plot(self, selected_columns):
         # Clear the current plot without resetting the figure
         self.ax_primary.cla()
-        if self.ax_secondary:
-            self.ax_secondary.cla()
-        if self.ax_tertiary:
-            self.ax_tertiary.cla()
+        for ax in self.y_axes[1:]:
+            ax.cla()
+
+        # Reset y_axes list to only contain primary y-axis
+        self.y_axes = [self.ax_primary]
 
         # Loop through selected columns and update existing plot
         for i, col in enumerate(selected_columns):
@@ -402,35 +408,35 @@ class PlotApp:
                 # Ensure that the selected index column is usable for plotting
                 x = df[self.index_column_dropdown.get()]  # Use the selected index column here
                 y = df[col]
-                if i == 0:  # Primary Y-axis
-                    self.ax_primary.plot(x, y, label=col, color='blue')  # Primary line color
-                    self.ax_primary.set_ylabel("Primary Y-axis Values")
-                elif i == 1:  # Secondary Y-axis
-                    if self.ax_secondary is None:
-                        self.ax_secondary = self.ax_primary.twinx()
-                    self.ax_secondary.plot(x, y, label=col, color='orange')  # Secondary line color
-                    self.ax_secondary.set_ylabel("Secondary Y-axis Values")
-                elif i == 2:  # Tertiary Y-axis
-                    if self.ax_tertiary is None:
-                        self.ax_tertiary = self.ax_primary.twinx()
-                        self.ax_tertiary.spines['right'].set_position(('outward', 60))  # Offset the tertiary axis
-                    self.ax_tertiary.plot(x, y, label=col, color='green')  # Tertiary line color
+
+                # Create a new y-axis for every new parameter
+                if i > 0:  # For secondary and tertiary y-axes
+                    new_ax = self.ax_primary.twinx()
+                    new_ax.spines['right'].set_position(('outward', 60 * (i - 1)))  # Offset each new axis
+                    self.y_axes.append(new_ax)  # Keep track of all y-axes
+                    ax = new_ax
+                else:
+                    ax = self.ax_primary
+
+                ax.plot(x, y, label=col, color=plt.cm.viridis(i / len(selected_columns)))  # Different colors
+                ax.set_ylabel(f"{col} Values")  # Set label for each y-axis
 
         # Set labels and title
         self.ax_primary.set_xlabel(self.index_column_dropdown.get())
         self.ax_primary.set_title("Updated Data Plot")
-        self.ax_primary.legend(loc='upper left')
-        if self.ax_secondary:
-            self.ax_secondary.legend(loc='upper right')
-        if self.ax_tertiary:
-            self.ax_tertiary.legend(loc='lower right')
+
+        # Update legends for all axes
+        handles, labels = self.ax_primary.get_legend_handles_labels()
+        for ax in self.y_axes[1:]:
+            h, l = ax.get_legend_handles_labels()
+            handles.extend(h)
+            labels.extend(l)
+
+        self.ax_primary.legend(handles, labels, loc='upper left')
 
         # Redraw the canvas without affecting the zoom level
         self.fig.canvas.draw_idle()
 
-
-
- 
 # Create the application window
 if __name__ == "__main__":
     root = tk.Tk()
