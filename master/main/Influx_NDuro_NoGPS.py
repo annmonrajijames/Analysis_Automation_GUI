@@ -1329,7 +1329,7 @@ def current_percentage_calc(data,save_path):
 # Initialize variables to store file paths
 log_file = None
 
-main_folder_path=r"C:\Users\annmo\Downloads\Root_folder\oct_9\r1\log.csv"
+main_folder_path=r"C:\Users\annmo\Desktop\log.csv"
 
 def process_data(file_path):
     # Read the first line to get the date and time from the header
@@ -1383,6 +1383,7 @@ def process_files_in_directory(root_directory):
                 print(f"Processed file saved to: {processed_file_path}")
 
 process_files_in_directory(main_folder_path)  
+
 def mergeExcel(main_folder_path):
     def prepare_sheet_in_memory(file_path):
         workbook = load_workbook(filename=file_path)
@@ -1444,47 +1445,53 @@ def mergeExcel(main_folder_path):
 
     merge_data_and_save_to_excel(main_folder_path)
 
-#Iterate over immediate subfolders of main_folder_path
-for subfolder_1 in os.listdir(main_folder_path):
-    subfolder_1_path = os.path.join(main_folder_path, subfolder_1)
+# Check if the main_folder_path is a file or directory
+if os.path.isfile(main_folder_path) and main_folder_path.endswith('.csv'):
+    # Process the single file if it is a .csv
+    try:
+        data = pd.read_csv(main_folder_path)
+        total_duration, total_distance, Wh_km, SOC_consumed, ppt_data = analysis_Energy(data, os.path.dirname(main_folder_path))
+        capture_analysis_output(main_folder_path, os.path.dirname(main_folder_path))
+        current_percentage_calc(data, os.path.dirname(main_folder_path))
+    except Exception as e:
+        print(f"Error processing {main_folder_path}: {e}")
 
-    # Check if subfolder_1 is a directory
-    if os.path.isdir(subfolder_1_path):
-        # Iterate over subfolders within subfolder_1
-        for subfolder in os.listdir(subfolder_1_path):
-            subfolder_path = os.path.join(subfolder_1_path, subfolder)
-            print(subfolder_path)
-        
-            # Check if subfolder starts with "Battery" and is a directory
-            if os.path.isdir(subfolder_path):                
-                log_file = None
-                log_found = False
-            
-                # Iterate through files in the subfolder
-                for file in os.listdir(subfolder_path):
-                    if file.startswith('log.') and file.endswith('.csv'):
-                        # print("if subfolder_path-------->",subfolder_path)
-                        log_file = os.path.join(subfolder_path, file)
-                        log_found = True
-                        break  # Stop searching once the log file is found
-            
-                # Process the log file if found
-                if log_found:
-                    try:
-                        data = pd.read_csv(log_file)
-                        # Process your data here
-                    except Exception as e:
-                        print(f"Error processing {log_file}: {e}")
-        
-                    total_duration = 0
-                    total_distance = 0
-                    Wh_km = 0
-                    SOC_consumed = 0
-                    mode_values = 0
-                    total_duration, total_distance, Wh_km, SOC_consumed, ppt_data = analysis_Energy(data,subfolder_path)
-                    capture_analysis_output(log_file, subfolder_path)
-                    current_percentage_calc(data,subfolder_path)    
-                else:
-                    print("Log file or KM file not found in subfolder:", subfolder)
+elif os.path.isdir(main_folder_path):
+    # Process directories and subdirectories
+    for subfolder_1 in os.listdir(main_folder_path):
+        subfolder_1_path = os.path.join(main_folder_path, subfolder_1)
+
+        # Check if subfolder_1 is a directory
+        if os.path.isdir(subfolder_1_path):
+            # Iterate over subfolders within subfolder_1
+            for subfolder in os.listdir(subfolder_1_path):
+                subfolder_path = os.path.join(subfolder_1_path, subfolder)
+                print(subfolder_path)
+                
+                # Check if subfolder is a directory
+                if os.path.isdir(subfolder_path):                
+                    log_file = None
+                    log_found = False
+                
+                    # Iterate through files in the subfolder
+                    for file in os.listdir(subfolder_path):
+                        if file.startswith('log.') and file.endswith('.csv'):
+                            log_file = os.path.join(subfolder_path, file)
+                            log_found = True
+                            break  # Stop searching once the log file is found
+                
+                    # Process the log file if found
+                    if log_found:
+                        try:
+                            data = pd.read_csv(log_file)
+                            total_duration, total_distance, Wh_km, SOC_consumed, ppt_data = analysis_Energy(data, subfolder_path)
+                            capture_analysis_output(log_file, subfolder_path)
+                            current_percentage_calc(data, subfolder_path)
+                        except Exception as e:
+                            print(f"Error processing {log_file}: {e}")
+                    else:
+                        print("Log file or KM file not found in subfolder:", subfolder)
+else:
+    print(f"The provided path is not valid: {main_folder_path}")
 
 mergeExcel(main_folder_path)
