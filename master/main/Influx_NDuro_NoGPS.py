@@ -1329,7 +1329,7 @@ def current_percentage_calc(data,save_path):
 # Initialize variables to store file paths
 log_file = None
 
-main_folder_path=r"C:\Users\annmo\Downloads\Root_folder"
+main_folder_path=r"C:\Users\annmo\Downloads\Root_folder\oct_9\r1\log.csv"
 
 def process_data(file_path):
     # Read the first line to get the date and time from the header
@@ -1367,13 +1367,20 @@ def process_data(file_path):
     return file_path
 
 def process_files_in_directory(root_directory):
-    # Walk through all directories starting from the root
+    # If root_directory is actually a file path, just process this file
+    if os.path.isfile(root_directory):
+        if root_directory.endswith('.csv'):  # Ensuring it's a CSV file
+            processed_file_path = process_data(root_directory)
+            print(f"Processed file saved to: {processed_file_path}")
+        return  # Exit after processing the single file
+    
+    # Otherwise, assume it's a directory and process all files within
     for dirpath, dirnames, filenames in os.walk(root_directory):
         for filename in filenames:
-            if filename == 'log.csv':  # Check for the specific filename 'log.csv'
+            if filename.endswith('.csv'):  # Adjust this as necessary
                 file_path = os.path.join(dirpath, filename)
                 processed_file_path = process_data(file_path)
-                print(f"Processed file saved to: {processed_file_path}")  
+                print(f"Processed file saved to: {processed_file_path}")
 
 process_files_in_directory(main_folder_path)  
 def mergeExcel(main_folder_path):
