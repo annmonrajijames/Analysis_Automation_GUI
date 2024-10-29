@@ -14,7 +14,7 @@ import Influx_NDuro_NoGPS
 
 def open_file_folder():
     global folder_path
-    choice = messagebox.askquestion("Select type", "Do you want to select a file?")
+    choice = messagebox.askquestion("One or Many", "Click 'YES':- Single csv file  || Click 'No':- Multiple csv files (Select root folder)")
     if choice == "yes":
         folder_path = filedialog.askopenfilename()
     else:
