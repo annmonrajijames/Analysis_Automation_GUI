@@ -1442,7 +1442,7 @@ def Influx_NDuro_NoGPS_input(input_folder_path):
         if os.path.isdir(main_folder_path):
             merge_data_and_save_to_excel(main_folder_path)
         elif os.path.isfile(main_folder_path):
-            print(f"Cannot process because the provided path is a file, not a directory: {main_folder_path}")
+            print(f"The file you did: {main_folder_path}")
         else:
             print("The provided path is invalid")
 

@@ -24,50 +24,6 @@ def Influx_LX70_input(input_folder_path):
     from plotly.subplots import make_subplots
     window_size =5
 
-    def process_data(file_path):
-        # Read the first line to get the date and time from the header
-        with open(file_path, 'r') as file:
-            first_line = file.readline().strip()
-        date_time = first_line.split(':', 1)[1].strip() if ':' in first_line else first_line
-
-        # Load the data using a chunk size
-        chunk_size = 50000  # Adjust chunk size based on your system's memory
-        chunks = pd.read_csv(file_path, skiprows=1, chunksize=chunk_size)
-        
-        # Check if the "Time" column exists in the first chunk
-        first_chunk = next(chunks, None)
-        if first_chunk is None or "Time" not in first_chunk.columns:
-            return file_path  # If no "Time" column, return without processing
-        
-        # If "Time" column exists, reinitialize chunks iterator and proceed with processing
-        chunks = pd.read_csv(file_path, skiprows=1, chunksize=chunk_size)
-        data_frames = []
-        
-        for chunk in chunks:
-            # Insert the date and time as a new column
-            chunk.insert(0, 'Creation Time', date_time)
-            data_frames.append(chunk)
-
-        # Concatenate all chunks into one DataFrame
-        data = pd.concat(data_frames, ignore_index=True)
-
-        # Drop the first three rows which were initially 2nd, 3rd, and 4th in the original file
-        data = data.drop([0, 1, 2])
-
-        # Save the processed data to the same file, overwriting the original
-        data.to_csv(file_path, index=False)
-        
-        return file_path
-
-    def process_files_in_directory(root_directory):
-        # Walk through all directories starting from the root
-        for dirpath, dirnames, filenames in os.walk(root_directory):
-            for filename in filenames:
-                if filename == 'log.csv':  # Check for the specific filename 'log.csv'
-                    file_path = os.path.join(dirpath, filename)
-                    processed_file_path = process_data(file_path)
-                    print(f"Processed file saved to: {processed_file_path}")
-
     # List to store DataFrames from each CSV file
     dfs = []
     def haversine(lat1, lon1, lat2, lon2):
@@ -1214,7 +1170,59 @@ def Influx_LX70_input(input_folder_path):
     log_file = None
     
     main_folder_path = input_folder_path
-    process_files_in_directory(main_folder_path)
+
+    def process_data(file_path):
+        # Read the first line to get the date and time from the header
+        with open(file_path, 'r') as file:
+            first_line = file.readline().strip()
+        date_time = first_line.split(':', 1)[1].strip() if ':' in first_line else first_line
+
+        # Load the data using a chunk size
+        chunk_size = 50000  # Adjust chunk size based on your system's memory
+        chunks = pd.read_csv(file_path, skiprows=1, chunksize=chunk_size)
+        
+        # Check if the "Time" column exists in the first chunk
+        first_chunk = next(chunks, None)
+        if first_chunk is None or "Time" not in first_chunk.columns:
+            return file_path  # If no "Time" column, return without processing
+        
+        # If "Time" column exists, reinitialize chunks iterator and proceed with processing
+        chunks = pd.read_csv(file_path, skiprows=1, chunksize=chunk_size)
+        data_frames = []
+        
+        for chunk in chunks:
+            # Insert the date and time as a new column
+            chunk.insert(0, 'Creation Time', date_time)
+            data_frames.append(chunk)
+
+        # Concatenate all chunks into one DataFrame
+        data = pd.concat(data_frames, ignore_index=True)
+
+        # Drop the first three rows which were initially 2nd, 3rd, and 4th in the original file
+        data = data.drop([0, 1, 2])
+
+        # Save the processed data to the same file, overwriting the original
+        data.to_csv(file_path, index=False)
+        
+        return file_path
+
+    def process_files_in_directory(root_directory):
+        # If root_directory is actually a file path, just process this file
+        if os.path.isfile(root_directory):
+            if root_directory.endswith('.csv'):  # Ensuring it's a CSV file
+                processed_file_path = process_data(root_directory)
+                print(f"Processed file saved to: {processed_file_path}")
+            return  # Exit after processing the single file
+        
+        # Otherwise, assume it's a directory and process all files within
+        for dirpath, dirnames, filenames in os.walk(root_directory):
+            for filename in filenames:
+                if filename.endswith('.csv'):  # Adjust this as necessary
+                    file_path = os.path.join(dirpath, filename)
+                    processed_file_path = process_data(file_path)
+                    print(f"Processed file saved to: {processed_file_path}")
+
+    process_files_in_directory(main_folder_path)  
     
     def mergeExcel(main_folder_path):
         def prepare_sheet_in_memory(file_path):
@@ -1225,109 +1233,105 @@ def Influx_LX70_input(input_folder_path):
             sheet['A1'] = 'file name'
             sheet['B1'] = file_name
             return sheet, file_name
-    
+
         def sheet_to_dict(sheet):
             data_dict = {}
             for row in sheet.iter_rows(min_row=2, values_only=True):
                 key, *values = row
                 data_dict[key] = values
             return data_dict
-    
+
         def merge_dicts(dict1, dict2):
             for key, values in dict2.items():
                 if key in dict1:
-                    # Assuming that values is a list of values
                     dict1[key].extend(values)
                 else:
                     dict1[key] = values
             return dict1
-    
+
         def process_directory(directory):
             merged_data = {}
             file_names = []
             for root, dirs, files in os.walk(directory):
-                for name in dirs:
-                        subdir_path = os.path.join(root, name)
-                        for file_name in os.listdir(subdir_path):
-                            if file_name.endswith(".xlsx"):
-                                file_path = os.path.join(subdir_path, file_name)
-                                sheet, extracted_file_name = prepare_sheet_in_memory(file_path)
-                                data_dict = sheet_to_dict(sheet)
-                                merged_data = merge_dicts(merged_data, data_dict)
-                                if extracted_file_name not in file_names:
-                                    file_names.append(extracted_file_name)
+                for file_name in files:
+                    if file_name.endswith(".xlsx"):
+                        file_path = os.path.join(root, file_name)
+                        sheet, extracted_file_name = prepare_sheet_in_memory(file_path)
+                        data_dict = sheet_to_dict(sheet)
+                        merged_data = merge_dicts(merged_data, data_dict)
+                        if extracted_file_name not in file_names:
+                            file_names.append(extracted_file_name)
             return merged_data, file_names
-    
-        def merge_data_and_save_to_excel(main_folder_path):
-            directory = main_folder_path
+
+        def merge_data_and_save_to_excel(directory):
             merged_data, file_names = process_directory(directory)
-    
             merged_workbook = Workbook()
             merged_sheet = merged_workbook.active
-    
-            # # Use the extracted file names for headers
-            # headers = ['File name'] + file_names
-            # merged_sheet.append(headers)
-    
+
             if merged_data:
                 for key, values in merged_data.items():
                     merged_sheet.append([key] + values)
+                merged_file_path = os.path.join(directory, 'Analysis.xlsx')
+                merged_workbook.save(filename=merged_file_path)
+                print("Analysis file is ready")
             else:
                 print("No data found in merged_data")
-    
-            merged_file_path = os.path.join(directory, 'Analysis.xlsx')
-            merged_workbook.save(filename=merged_file_path)
-            print("Analysis file is ready")
-    
-        merge_data_and_save_to_excel(main_folder_path)
-    
 
+        # Determine if the provided path is a directory or a file
+        if os.path.isdir(main_folder_path):
+            merge_data_and_save_to_excel(main_folder_path)
+        elif os.path.isfile(main_folder_path):
+            print(f"The file path you did: {main_folder_path}")
+        else:
+            print("The provided path is invalid")
 
+    # Check if the main_folder_path is a file or directory
+    if os.path.isfile(main_folder_path) and main_folder_path.endswith('.csv'):
+        # Process the single file if it is a .csv
+        try:
+            data = pd.read_csv(main_folder_path)
+            total_duration, total_distance, Wh_km, SOC_consumed, ppt_data = analysis_Energy(data, os.path.dirname(main_folder_path))
+            capture_analysis_output(main_folder_path, os.path.dirname(main_folder_path))
+            current_percentage_calc(data, os.path.dirname(main_folder_path))
+        except Exception as e:
+            print(f"Error processing {main_folder_path}: {e}")
 
-    #Iterate over immediate subfolders of main_folder_path
-    for subfolder_1 in os.listdir(main_folder_path):
-        subfolder_1_path = os.path.join(main_folder_path, subfolder_1)
-        
-        # Check if subfolder_1 is a directory
-        if os.path.isdir(subfolder_1_path):
-            
-            # Iterate over subfolders within subfolder_1
-            for subfolder in os.listdir(subfolder_1_path):
-                subfolder_path = os.path.join(subfolder_1_path, subfolder)
-                
-                # Check if subfolder starts with "Battery" and is a directory
-                if os.path.isdir(subfolder_path):                
-                    log_file = None
-                    log_found = False
+    elif os.path.isdir(main_folder_path):
+        # Process directories and subdirectories
+        for subfolder_1 in os.listdir(main_folder_path):
+            subfolder_1_path = os.path.join(main_folder_path, subfolder_1)
+
+            # Check if subfolder_1 is a directory
+            if os.path.isdir(subfolder_1_path):
+                # Iterate over subfolders within subfolder_1
+                for subfolder in os.listdir(subfolder_1_path):
+                    subfolder_path = os.path.join(subfolder_1_path, subfolder)
+                    print(subfolder_path)
                     
-                    # Iterate through files in the subfolder
-                    for file in os.listdir(subfolder_path):
-                        if file.startswith('log.') and file.endswith('.csv'):
-                            log_file = os.path.join(subfolder_path, file)
-                            log_found = True
-                            break  # Stop searching once the log file is found
+                    # Check if subfolder is a directory
+                    if os.path.isdir(subfolder_path):                
+                        log_file = None
+                        log_found = False
                     
-                    # Process the log file if found
-                    if log_found:
-                        print(f"Processing log file: {log_file}")
-                        try:
-                            data = pd.read_csv(log_file)
-                            # Process your data here
-                        except Exception as e:
-                            print(f"Error processing {log_file}: {e}")
-
-
-                        total_duration = 0
-                        total_distance = 0
-                        Wh_km = 0
-                        SOC_consumed = 0
-                        mode_values = 0
-                        
-                        total_duration, total_distance, Wh_km, SOC_consumed, ppt_data = analysis_Energy(data,subfolder_path)
-                        capture_analysis_output(log_file, subfolder_path)
-                        current_percentage_calc(data,subfolder_path)
-                        
-                    else:
-                        print("Log file or KM file not found in subfolder:", subfolder)
+                        # Iterate through files in the subfolder
+                        for file in os.listdir(subfolder_path):
+                            if file.startswith('log.') and file.endswith('.csv'):
+                                log_file = os.path.join(subfolder_path, file)
+                                log_found = True
+                                break  # Stop searching once the log file is found
+                    
+                        # Process the log file if found
+                        if log_found:
+                            try:
+                                data = pd.read_csv(log_file)
+                                total_duration, total_distance, Wh_km, SOC_consumed, ppt_data = analysis_Energy(data, subfolder_path)
+                                capture_analysis_output(log_file, subfolder_path)
+                                current_percentage_calc(data, subfolder_path)
+                            except Exception as e:
+                                print(f"Error processing {log_file}: {e}")
+                        else:
+                            print("Log file or KM file not found in subfolder:", subfolder)
+    else:
+        print(f"The provided path is not valid: {main_folder_path}")
     
     mergeExcel(main_folder_path)
