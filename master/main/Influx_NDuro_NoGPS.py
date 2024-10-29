@@ -1329,7 +1329,7 @@ def current_percentage_calc(data,save_path):
 # Initialize variables to store file paths
 log_file = None
 
-main_folder_path=r"C:\Users\annmo\Desktop\log.csv"
+main_folder_path=r"C:\Users\annmo\Downloads\Root_folder"
 
 def process_data(file_path):
     # Read the first line to get the date and time from the header
@@ -1404,7 +1404,6 @@ def mergeExcel(main_folder_path):
     def merge_dicts(dict1, dict2):
         for key, values in dict2.items():
             if key in dict1:
-                # Assuming that values is a list of values
                 dict1[key].extend(values)
             else:
                 dict1[key] = values
@@ -1414,36 +1413,37 @@ def mergeExcel(main_folder_path):
         merged_data = {}
         file_names = []
         for root, dirs, files in os.walk(directory):
-            for name in dirs:
-                    subdir_path = os.path.join(root, name)
-                    for file_name in os.listdir(subdir_path):
-                        if file_name.endswith(".xlsx"):
-                            file_path = os.path.join(subdir_path, file_name)
-                            sheet, extracted_file_name = prepare_sheet_in_memory(file_path)
-                            data_dict = sheet_to_dict(sheet)
-                            merged_data = merge_dicts(merged_data, data_dict)
-                            if extracted_file_name not in file_names:
-                                file_names.append(extracted_file_name)
+            for file_name in files:
+                if file_name.endswith(".xlsx"):
+                    file_path = os.path.join(root, file_name)
+                    sheet, extracted_file_name = prepare_sheet_in_memory(file_path)
+                    data_dict = sheet_to_dict(sheet)
+                    merged_data = merge_dicts(merged_data, data_dict)
+                    if extracted_file_name not in file_names:
+                        file_names.append(extracted_file_name)
         return merged_data, file_names
 
-    def merge_data_and_save_to_excel(main_folder_path):
-        directory = main_folder_path
+    def merge_data_and_save_to_excel(directory):
         merged_data, file_names = process_directory(directory)
-
         merged_workbook = Workbook()
         merged_sheet = merged_workbook.active
 
         if merged_data:
             for key, values in merged_data.items():
                 merged_sheet.append([key] + values)
+            merged_file_path = os.path.join(directory, 'Analysis.xlsx')
+            merged_workbook.save(filename=merged_file_path)
+            print("Analysis file is ready")
         else:
             print("No data found in merged_data")
 
-        merged_file_path = os.path.join(directory, 'Analysis.xlsx')
-        merged_workbook.save(filename=merged_file_path)
-        print("Analysis file is ready")
-
-    merge_data_and_save_to_excel(main_folder_path)
+    # Determine if the provided path is a directory or a file
+    if os.path.isdir(main_folder_path):
+        merge_data_and_save_to_excel(main_folder_path)
+    elif os.path.isfile(main_folder_path):
+        print(f"Cannot process because the provided path is a file, not a directory: {main_folder_path}")
+    else:
+        print("The provided path is invalid")
 
 # Check if the main_folder_path is a file or directory
 if os.path.isfile(main_folder_path) and main_folder_path.endswith('.csv'):
