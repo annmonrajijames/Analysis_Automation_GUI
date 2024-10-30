@@ -236,7 +236,7 @@ class PlotApp:
         for col, var in self.checkbox_vars.items():
             if search_term in col.lower():  # Only toggle those that match the search
                 var.set(select_all)
- 
+
     def update_checkboxes(self, event=None):
         """Update checkboxes based on the filtered column names."""
         search_term = self.search_entry.get().lower()
@@ -268,7 +268,7 @@ class PlotApp:
 
         # Update the Select All checkbox based on the state of the visible checkboxes
         self.select_all_var.set(1 if all_selected else 0)
- 
+    
     def submit(self):
         # Get the columns that are checked
         selected_columns = [col for col, var in self.checkbox_vars.items() if var.get()]
@@ -315,6 +315,8 @@ class PlotApp:
         else:
             messagebox.showerror("Error", "Please select columns and an index column.")
 
+    
+
     def final_submit(self):
         # Get the columns that are checked in the selected columns frame
         final_selected_columns = [col for col, var in self.selected_checkbox_vars.items() if var.get()]
@@ -331,68 +333,6 @@ class PlotApp:
         else:
             messagebox.showerror("Error", "Please select at least one column.")
 
- 
-    def plot_columns(self, selected_columns, index_column, file_directory):
-        # Clear previous plots if necessary
-        if self.fig:
-            plt.close(self.fig)
-
-        # Create a new figure and axes
-        self.fig, self.ax_primary = plt.subplots(figsize=(10, 6))
-        
-        # List to keep track of all y-axes
-        self.y_axes = [self.ax_primary]  # Start with primary y-axis
-
-        # Loop through selected columns and plot each
-        for i, col in enumerate(selected_columns):
-            for df in self.data_frames:
-                # Ensure that index_column is numeric and usable for plotting
-                x = df[index_column]  # Use the selected index column here
-                y = df[col]
-
-                # Create a new y-axis for every new parameter
-                if i > 0:  # For secondary and tertiary y-axes
-                    new_ax = self.ax_primary.twinx()
-                    new_ax.spines['right'].set_position(('outward', 60 * (i - 1)))  # Offset each new axis
-                    self.y_axes.append(new_ax)  # Keep track of all y-axes
-                    ax = new_ax
-                else:
-                    ax = self.ax_primary
-
-                ax.plot(x, y, label=col, color=plt.cm.viridis(i / len(selected_columns)))  # Different colors
-                ax.set_ylabel(f"{col} Values")  # Set label for each y-axis
-
-        # Set labels and title
-        self.ax_primary.set_xlabel(index_column)
-        self.ax_primary.set_title("Data Plot")
-
-        # Update legends for all axes
-        handles, labels = self.ax_primary.get_legend_handles_labels()
-        for ax in self.y_axes[1:]:
-            h, l = ax.get_legend_handles_labels()
-            handles.extend(h)
-            labels.extend(l)
-
-        self.ax_primary.legend(handles, labels, loc='upper left')
-
-        # Add interactive data cursors
-        mplcursors.cursor(hover=True)
-
-        # Create a canvas for the plot and pack it into the plot frame
-        canvas = FigureCanvasTkAgg(self.fig, master=self.plot_frame)
-        canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
-
-        # Create a navigation toolbar for the plot
-        toolbar = NavigationToolbar2Tk(canvas, self.plot_frame)
-        toolbar.update()
-        canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
-
-        # Draw the canvas
-        canvas.draw()
-
-        # Connect the toolbar's 'home' button to reset zoom
-        toolbar.home = lambda: (self.ax_primary.set_xlim(None), self.ax_primary.set_ylim(None),
-                                [ax.set_ylim(None) for ax in self.y_axes[1:]])
 
     def update_plot(self, selected_columns, retain_zoom=False):
         # Get the current axes limits if retaining zoom
