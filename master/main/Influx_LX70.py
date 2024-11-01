@@ -22,6 +22,7 @@ def Influx_LX70_input(input_folder_path):
     from collections import defaultdict
     import plotly.graph_objs as go
     from plotly.subplots import make_subplots
+    from datetime import datetime, timedelta
     window_size =5
 
     def process_data(file_path):
@@ -288,7 +289,61 @@ def Influx_LX70_input(input_folder_path):
         data['DeltaCellVoltage'] = differences
 
 
-        plot_ghps(data,subfolder_path,max_column)
+            
+        if 'DATETIME' not in data.columns:  #if 'DATETIME' not in column Present 
+            # start_time_str = '01-08-24 14:16:00'  # Update this with your actual start time
+            start_time_str = data['Creation Time'].iloc[0]  # Update this with your actual start time
+            # Parse the time, defaulting to ":00" if seconds are missing
+            start_time = datetime.strptime(start_time_str, '%d-%m-%y %H:%M')
+            print("Start_time--->",start_time)
+
+
+
+            
+
+            # Function to convert fractional seconds to hh:mm:ss format
+            def convert_to_hhmmss(row, start_time):
+                # Calculate the time in seconds
+                seconds = row['Time'] 
+                # Add these seconds to the start time
+                new_time = start_time + timedelta(seconds=seconds)
+                # Return the time in 'dd-mm-yy hh:mm:ss' format
+                return new_time.strftime('%d-%m-%y %H:%M:%S')
+
+            # Apply the function to create a new column
+            data['DATETIME'] = data.apply(convert_to_hhmmss, start_time=start_time, axis=1)
+
+            data['DATETIME'] = pd.to_datetime(data['DATETIME'])
+
+
+            data = data.dropna(subset=['DATETIME'])
+        
+            data['DATETIME'] = pd.to_datetime(data['DATETIME'], unit='s')
+        
+
+            data['DATETIME'] = pd.to_datetime(data['DATETIME'])
+
+            print("GPS DATA NOT AVAILABLE , SO USED CREATION TIME TO CALCULATE DATETIME")
+
+        
+        else:                                                                       #if 'DATETIME' column Present 
+            data['DATETIME'] = pd.to_numeric(data['DATETIME'], errors='coerce')
+       
+            # Drop or handle NaN values
+            data = data.dropna(subset=['DATETIME'])
+        
+            # Convert the Unix timestamps to datetime
+            data['DATETIME'] = pd.to_datetime(data['DATETIME'], unit='s')
+        
+            # Print the converted DATETIME column
+            # data['DATETIME'] = pd.to_datetime(data['DATETIME'])
+
+            data['DATETIME'] = data['DATETIME'] + pd.to_timedelta('5h30m')
+
+            print("GPS DATA AVAILABLE")
+
+
+        # plot_ghps(data,subfolder_path,max_column)
     
         # Drop rows with missing values in 'SOCAh [SA: 08]' column
         data.dropna(subset=['SOCAh [SA: 08]'], inplace=True)
@@ -354,19 +409,20 @@ def Influx_LX70_input(input_folder_path):
         print("Distance With RPM---------------------->",total_distance_with_RPM/1000)
     #################
 
-    ###########Calculating the Distance based on Ground Distance from GPS Module data
-        # total_distance_Ground_Distance = data['GROUND_DISTANCE'].iloc[-1]
-        # Drop any empty values in the 'GROUND_DISTANCE' column and get the last non-empty value
-        total_distance_Ground_Distance = data['GROUND_DISTANCE'].dropna().iloc[-1]
+    #
 
-        # for index, row in data.iterrows():
-        #     if row['GROUND_DISTANCE'] >= 100:
+        if 'GROUND_DISTANCE' in data.columns:
+        ###########Calculating the Distance based on Ground Distance from GPS Module data
+            # Drop any empty values in the 'GROUND_DISTANCE' column and get the last non-empty value
+            total_distance_Ground_Distance = data['GROUND_DISTANCE'].dropna().iloc[-1]
 
-        #         distance_interval_groundSpeed = row['GROUND_DISTANCE'] * row['localtime_Diff']
-        #         # Calculate the distance traveled in this interval
-        #         total_distance_Ground_Distance += distance_interval_groundSpeed
-                
-        print("Distance With total_distance_Ground_Distance---------------------->",total_distance_Ground_Distance/1000)
+            total_distance_Ground_Distance = total_distance_Ground_Distance/1000
+
+        ###############
+        else:
+            total_distance_Ground_Distance =000  #RPM data will be used as distance if GPS data Not available
+
+            
     ###############
 
         #Set the 'localtime' column as the index
@@ -414,26 +470,30 @@ def Influx_LX70_input(input_folder_path):
         total_distance = 0
         distance_per_mode = defaultdict(float)
 
-        # Iterate over rows to compute distance covered between consecutive points
-        for i in range(len(data) - 1):
+        if 'LATITUDE' in data.columns:
+            # Iterate over rows to compute distance covered between consecutive points
+            for i in range(len(data) - 1):
+            
+                # Get latitude and longitude of consecutive points
+                lat1 = data['LATITUDE'].iloc[i]
+                lon1 = data['LONGITUDE'].iloc[i]
+                lat2 = data['LATITUDE'].iloc[i + 1]
+                lon2 = data['LONGITUDE'].iloc[i + 1]
+            
         
-            # Get latitude and longitude of consecutive points
-            lat1 = data['LATITUDE'].iloc[i]
-            lon1 = data['LONGITUDE'].iloc[i]
-            lat2 = data['LATITUDE'].iloc[i + 1]
-            lon2 = data['LONGITUDE'].iloc[i + 1]
+                # Calculate distance between consecutive points
+                distance = haversine(lat1, lon1, lat2, lon2)
         
-    
-            # Calculate distance between consecutive points
-            distance = haversine(lat1, lon1, lat2, lon2)
-    
-            # Add distance to total distance covered
-            total_distance += distance
+                # Add distance to total distance covered
+                total_distance += distance
 
-            mode = data['Mode_Ack [SA: 02]'].iloc[i]
-            distance_per_mode[mode] += distance
-    
-        print("Total distance covered (in kilometers):{:.2f}".format(total_distance))
+                mode = data['Mode_Ack [SA: 02]'].iloc[i]
+                distance_per_mode[mode] += distance
+        
+            print("Total distance covered (in kilometers):{:.2f}".format(total_distance))
+
+        else:
+            total_distance = 000
     
         ##############   Wh/Km
         Wh_km = abs(watt_h / total_distance)
@@ -552,7 +612,7 @@ def Influx_LX70_input(input_folder_path):
         print("Idling time percentage:", idling_percentage)
     
         # Calculate Time_specific speed ranges
-        speed_ranges = [(0, 10), (10, 20), (20, 30), (30, 40), (40, 50),(50, 60),(60,70),(70, 80),(80, 90)]
+        speed_ranges = [(0.01, 10), (10, 20), (20, 30), (30, 40), (40, 50),(50, 60),(60,70),(70, 80),(80, 90)]
         speed_range_percentages = {}
     
         for range_ in speed_ranges:
@@ -1073,7 +1133,7 @@ def Influx_LX70_input(input_folder_path):
                 # Define columns to plot for idling and speed metrics
             idling_speed_columns = [
                 'Idling time percentage',
-                'Time_0-10 km/h(%)',
+                'Time_0.01-10 km/h(%)',
                 'Time_10-20 km/h(%)',
                 'Time_20-30 km/h(%)',
                 'Time_30-40 km/h(%)',
@@ -1085,14 +1145,14 @@ def Influx_LX70_input(input_folder_path):
             ]
 
             # Define columns to plot for Wh/km and distance metrics
-            wh_distance_columns = [
-                'Wh/km in CUSTOM mode',
-                'Distance_Custom mode',
-                'Wh/km in POWER mode',
-                'Distance_POWER mode',
-                'Wh/km in ECO mode',
-                'Distance_ECO mode'
-            ]
+            # wh_distance_columns = [
+            #     'Wh/km in CUSTOM mode',
+            #     'Distance_Custom mode',
+            #     'Wh/km in POWER mode',
+            #     'Distance_POWER mode',
+            #     'Wh/km in ECO mode',
+            #     'Distance_ECO mode'
+            # ]
 
             # Define colors for idling and speed metrics
             idling_speed_colors = ['green', 'green', 'green', 'green', 'green', 'green', 'red', 'red', 'red']
@@ -1126,34 +1186,34 @@ def Influx_LX70_input(input_folder_path):
                 ws.add_image(img_idling_speed, 'F35')  # Adjust the cell location as needed
 
             # Function to plot and save Wh/km and distance metrics
-            def plot_wh_distance_metrics():
-                plt.figure(figsize=(15, 6))  # Increase figure size
-                bars = plt.bar(wh_distance_columns, transposed_df.iloc[0][wh_distance_columns], color=wh_distance_colors)
-                # plt.bar(wh_distance_columns, transposed_df.iloc[0][wh_distance_columns], color=wh_distance_colors)
-                plt.xlabel('Metrics')
-                plt.ylabel('Values')
-                plt.title('Bar Graph of Wh/km and Distance Travelled')
-                plt.xticks(rotation=-20, ha='left', fontsize=10)  # Adjust rotation and alignment
+            # def plot_wh_distance_metrics():
+            #     plt.figure(figsize=(15, 6))  # Increase figure size
+            #     bars = plt.bar(wh_distance_columns, transposed_df.iloc[0][wh_distance_columns], color=wh_distance_colors)
+            #     # plt.bar(wh_distance_columns, transposed_df.iloc[0][wh_distance_columns], color=wh_distance_colors)
+            #     plt.xlabel('Metrics')
+            #     plt.ylabel('Values')
+            #     plt.title('Bar Graph of Wh/km and Distance Travelled')
+            #     plt.xticks(rotation=-20, ha='left', fontsize=10)  # Adjust rotation and alignment
 
 
-                # Annotate bars with values
-                for bar in bars:
-                    height = bar.get_height()
-                    plt.text(bar.get_x() + bar.get_width() / 2, height, f'{height:.2f}', ha='center', va='bottom')
+            #     # Annotate bars with values
+            #     for bar in bars:
+            #         height = bar.get_height()
+            #         plt.text(bar.get_x() + bar.get_width() / 2, height, f'{height:.2f}', ha='center', va='bottom')
 
-                plot_file = f"{folder_path}/wh_distance_bar_plot.png"
-                plt.savefig(plot_file)
-                # plt.show()
-                print(f"Wh/km and distance bar plot saved: {plot_file}")
+            #     plot_file = f"{folder_path}/wh_distance_bar_plot.png"
+            #     plt.savefig(plot_file)
+            #     # plt.show()
+            #     print(f"Wh/km and distance bar plot saved: {plot_file}")
 
-                # Insert plots into the Excel worksheet
-                img_wh_distance = Image(f"{folder_path}/wh_distance_bar_plot.png")
-                ws.add_image(img_wh_distance, 'F2')  # Adjust the cell location as needed
+            #     # Insert plots into the Excel worksheet
+            #     img_wh_distance = Image(f"{folder_path}/wh_distance_bar_plot.png")
+            #     ws.add_image(img_wh_distance, 'F2')  # Adjust the cell location as needed
 
 
             # Generate and save the plots
             plot_idling_speed_metrics()
-            plot_wh_distance_metrics()
+            # plot_wh_distance_metrics()
 
             # Save the Excel workbook
             excel_output_file = f"{folder_path}/analysis_{folder_name}.xlsx"
@@ -1277,7 +1337,7 @@ def Influx_LX70_input(input_folder_path):
     
             merged_file_path = os.path.join(directory, 'Analysis.xlsx')
             merged_workbook.save(filename=merged_file_path)
-            print("Analysis file is ready")
+            print("<----------------Analysis file is ready---------------->")
     
         merge_data_and_save_to_excel(main_folder_path)
     

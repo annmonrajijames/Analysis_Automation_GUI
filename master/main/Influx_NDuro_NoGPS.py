@@ -269,7 +269,7 @@ def Influx_NDuro_NoGPS_input(input_folder_path):
 
             data['DATETIME'] = pd.to_datetime(data['DATETIME'])
 
-            print("Entered if--------------->")
+            print("GPS DATA NOT AVAILABLE , SO USED CREATION TIME TO CALCULATE DATETIME")
 
         
         else:                                                                                       #if 'DATETIME' column Present 
@@ -286,7 +286,7 @@ def Influx_NDuro_NoGPS_input(input_folder_path):
 
             data['DATETIME'] = data['DATETIME'] + pd.to_timedelta('5h30m')
 
-            print("Entered else---------->")
+            print("GPS DATA AVAILABLE")
 
 
  
@@ -492,8 +492,6 @@ def Influx_NDuro_NoGPS_input(input_folder_path):
         distance_per_mode = defaultdict(float)
 
         if 'LATITUDE' in data.columns:
-            print("")
-    
             # Iterate over rows to compute distance covered between consecutive points
             for i in range(len(data) - 1):
             
@@ -675,7 +673,7 @@ def Influx_NDuro_NoGPS_input(input_folder_path):
         idling_percentage = (idling_localtime / len(data)) * 100
     
         # Calculate Time_specific speed ranges
-        speed_ranges = [(1, 10), (10, 20), (20, 30), (30, 40), (40, 50),(50, 60),(60,70),(70, 80),(80, 90)]
+        speed_ranges = [(0.01, 10), (10, 20), (20, 30), (30, 40), (40, 50),(50, 60),(60,70),(70, 80),(80, 90)]
         speed_range_percentages = {}
         speed_range_durations = {}
         total_seconds = total_duration.total_seconds()
@@ -1484,7 +1482,7 @@ def Influx_NDuro_NoGPS_input(input_folder_path):
     
             merged_file_path = os.path.join(directory, 'Analysis.xlsx')
             merged_workbook.save(filename=merged_file_path)
-            print("Analysis file is ready")
+            print("<----------------Analysis file is ready---------------->")
     
         merge_data_and_save_to_excel(main_folder_path)
     
