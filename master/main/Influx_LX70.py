@@ -405,8 +405,10 @@ def Influx_LX70_input(input_folder_path):
                 distance_interval = row['Speed_ms'] * row['localtime_Diff']
                 # Calculate the distance traveled in this interval
                 total_distance_with_RPM += distance_interval
+
+        total_distance_with_RPM = total_distance_with_RPM/1000
                 
-        print("Distance With RPM---------------------->",total_distance_with_RPM/1000)
+        # print("Distance With RPM---------------------->",total_distance_with_RPM/1000)
     #################
 
     #
@@ -414,7 +416,8 @@ def Influx_LX70_input(input_folder_path):
         if 'GROUND_DISTANCE' in data.columns:
         ###########Calculating the Distance based on Ground Distance from GPS Module data
             # Drop any empty values in the 'GROUND_DISTANCE' column and get the last non-empty value
-            total_distance_Ground_Distance = data['GROUND_DISTANCE'].dropna().iloc[-1]
+            # total_distance_Ground_Distance = data['GROUND_DISTANCE'].dropna().iloc[-1]
+            total_distance_Ground_Distance = data['GROUND_DISTANCE'].dropna().max()
 
             total_distance_Ground_Distance = total_distance_Ground_Distance/1000
 
@@ -442,6 +445,21 @@ def Influx_LX70_input(input_folder_path):
     
         # Calculate the localtime difference between consecutive rows
         data_resampled['localtime_Diff'] = data_resampled.index.to_series().diff().dt.total_seconds().fillna(0)
+
+        # filtered_data_withoutDischarge = data_resampled[0 < data_resampled['PackCurr [SA: 06]'] < 50]                   #Only Regen
+        filtered_data_withoutDischarge = data_resampled[(data_resampled['PackCurr [SA: 06]'] > 0) & (data_resampled['PackCurr [SA: 06]'] < 50)]
+        regen_ah = abs((filtered_data_withoutDischarge['PackCurr [SA: 06]'] * filtered_data_withoutDischarge['localtime_Diff']).sum()) / 3600  # Convert seconds to hours
+
+        avg_regen_current = filtered_data_withoutDischarge['PackCurr [SA: 06]'].mean()
+
+        # filtered_data_DischargeCurrent= data_resampled[-200 < data_resampled['PackCurr [SA: 06]'] < 0]                   #Only Discharge
+        filtered_data_DischargeCurrent = data_resampled[(data_resampled['PackCurr [SA: 06]'] > -150) & (data_resampled['PackCurr [SA: 06]'] < 0)]
+        Discharge_ah = abs((filtered_data_DischargeCurrent['PackCurr [SA: 06]'] * filtered_data_DischargeCurrent['localtime_Diff']).sum()) / 3600  # Convert seconds to hours
+
+        filtered_data_DischargeCurrent['localtime_Diff'] = data_resampled.index.to_series().diff().dt.total_seconds().fillna(0)
+        discharge_wh_hr =abs((filtered_data_DischargeCurrent['PackCurr [SA: 06]'] * filtered_data_DischargeCurrent['PackVol [SA: 06]'] * filtered_data_DischargeCurrent['localtime_Diff']).sum()) / 3600  # Convert seconds to hours
+        print("discharge Watt-hours (Wh):------------------------------------> {:.2f}" .format(discharge_wh_hr))
+
     
         # Calculate the actual Ampere-hours (Ah) using the trapezoidal rule for numerical integration
         actual_ah = abs((data_resampled['PackCurr [SA: 06]'] * data_resampled['localtime_Diff']).sum()) / 3600  # Convert seconds to hours
@@ -567,13 +585,25 @@ def Influx_LX70_input(input_folder_path):
     
     
     
-        # Calculate power using PackCurr [SA: 06] and PackVol [SA: 06]
-        data_resampled['Power'] = data_resampled['PackCurr [SA: 06]'] * data_resampled['PackVol [SA: 06]']
+        # # Calculate power using PackCurr [SA: 06] and PackVol [SA: 06]
+        # data_resampled['Power'] = data_resampled['PackCurr [SA: 06]'] * data_resampled['PackVol [SA: 06]']
 
     
+        # # Find the peak power
+        # peak_power = data_resampled['Power'].min()
+        # print("Peak Power:", peak_power)
+
+                # Calculate power using PackCurr [SA: 06] and PackVol [SA: 06]
+        filtered_data_DischargeCurrent['Power'] = filtered_data_DischargeCurrent['PackCurr [SA: 06]'] * filtered_data_DischargeCurrent['PackVol [SA: 06]']
+    
         # Find the peak power
-        peak_power = data_resampled['Power'].min()
-        print("Peak Power:", peak_power)
+        peak_power = filtered_data_DischargeCurrent['Power'].min()
+        
+
+        peak_current =filtered_data_DischargeCurrent['PackCurr [SA: 06]'].min()
+        print("Peak Current:", peak_current)
+
+        peak_voltage =data_resampled['PackVol [SA: 06]'].max()
 
         average_current =data_resampled['PackCurr [SA: 06]'].mean()
     
@@ -626,7 +656,7 @@ def Influx_LX70_input(input_folder_path):
         data_resampled['Power'] = -data_resampled['PackCurr [SA: 06]'] * data_resampled['PackVol [SA: 06]']
     
         # Find the peak power
-        peak_power = data_resampled['Power'].max()
+        # peak_power = data_resampled['Power'].max()
     
         # Get the maximum cell voltage
         max_cell_voltage = data_resampled['MaxCellVol [SA: 05]'].max()
@@ -684,11 +714,13 @@ def Influx_LX70_input(input_folder_path):
         max_motor_temp = filter_Motor_temp_spikes['Motor_Temperature [SA: 03]'].max()
         avg_motor_temp = filter_Motor_temp_spikes['Motor_Temperature [SA: 03]'].mean()
     
-        # Get the maximum temperature of FetTemp [SA: 08]
         max_fet_temp = data_resampled['FetTemp [SA: 08]'].max()
+        min_fet_temp = data_resampled['FetTemp [SA: 08]'].min()
     
         # Get the maximum temperature of AfeTemp [SA: 0C]
         max_afe_temp = data_resampled['AfeTemp [SA: 0C]'].max()
+        min_afe_temp = data_resampled['AfeTemp [SA: 0C]'].min()
+    
     
         # Get the maximum temperature of PcbTemp [SA: 0C]
         max_pcb_temp = data_resampled['PcbTemp [SA: 0C]'].max()
@@ -791,19 +823,19 @@ def Influx_LX70_input(input_folder_path):
         ppt_data = {
             "Date and localtime": str(start_localtime) + " to " + str(end_localtime),
             # "INFLUX ID ": InfluxId,
-            "Total Time taken for the ride": total_duration,
+            "Total Time taken for the ride (HH:MM:SS) ": total_duration,
             "Starting SoC (Ah)": starting_soc_Ah,
             "Ending SoC (Ah)": ending_soc_Ah,
-            # "Actual Ampere-hours (Ah) - Calculated": actual_ah,
             "Actual Ampere-hours (Ah) - Cumulative Consumption": actual_ah,
+            "Regen (Ah)": regen_ah,
+            "Discharge (Ah)": Discharge_ah,
             "Starting SoC (%)": starting_soc_percentage,
             "Ending SoC (%)": ending_soc_percentage,
             "Total SOC consumed(%)":starting_soc_percentage- ending_soc_percentage,
-            "Energy consumption Rate(WH/KM)": watt_h / total_distance,
             "(Wh/Km) - Energy consumption Rate": watt_h / (total_distance_with_RPM),
             "(Ah/Km) - Energy consumption Rate ": actual_ah / (total_distance_with_RPM),
-            # "Total distance covered (km)": total_distance,
-            "Total distance - RPM": total_distance_with_RPM/1000,
+            "Discharge Efficiency (WH/KM)":discharge_wh_hr/(total_distance_with_RPM),
+            "Total distance - RPM": total_distance_with_RPM,
             "Total distance covered (km) - Lat & Long(GPS)": total_distance,
             "Total distance - Ground Distance(GPS)": total_distance_Ground_Distance/1000,
             "Mode": "", 
@@ -814,12 +846,20 @@ def Influx_LX70_input(input_folder_path):
             # "Wh/km in ECO mode": wh_per_km_ECO_mode,
             # "Distance_ECO mode":distance_per_mode[1],       
             "Actual Watt-hours (Wh)- Calculated_UsingFormala 'watt_h= 1/3600(|∑(V(t)⋅I(t)⋅Δt)|)'": watt_h,
-            "Peak Power(W)": peak_power,
+            "Peak Power(W)": abs(peak_power),
+            "Peak current (A)": abs(peak_current),
+            "Peak voltage (V)":abs(peak_voltage),
             "Average Power(W)": average_power,
-            "Average_current":abs(average_current),
+            "Average_current (With regen and with Idle) (A)":abs(average_current_withRegen_withIdling),
+            "Average_current (With regen and without Idle) (A)":abs(average_current_withRegen_withoutIdling),
+            "Average_current (Without regen and with Idle) (A)":abs(average_current_withoutRegen_withIdling),
+            "Average_current (Without regen and without Idle) (A)- (Avg. Discharge Current)":abs(average_current_withoutRegen_withoutIdling),
             "Total Energy Regenerated(Wh)": energy_regenerated,
             # "Regenerative Effectiveness(%)": regenerative_effectiveness,
-            "Avg_speed (km/hr)":avg_speed,
+            # "Avg_speed (km/hr)":avg_speed,
+            "Avg_speed with idle(km/hr)":avg_speed_with_idle,
+            "Avg_speed without idle(km/hr)":avg_speed_without_idle,
+            "Peak speed (Km/hr)":peak_speed,
             "Highest Cell Voltage(V)": max_cell_voltage,
             "Lowest Cell Voltage(V)": min_cell_voltage,
             "Difference in Cell Voltage(V)": voltage_difference,
@@ -829,33 +869,26 @@ def Influx_LX70_input(input_folder_path):
             "Initial MCU Temperature (at 100 SOC):":Initial_MCU_TEMP,
             "Maximum MCU Temperature(C)": max_mcu_temp,
             "Delta (MCU Temperature(C))":max_mcu_temp-Initial_MCU_TEMP,
+            "Average MCU Temperature(C)":avg_mcu_temp,
             "Initial Motor Temperature (at 100 SOC)":Initial_MOTOR_TEMP,
             "Maximum Motor Temperature(C)": max_motor_temp,
             "Delta (Motor Temperature(C))":max_motor_temp-Initial_MOTOR_TEMP,
+            "Average Motor Temperature(C)":avg_motor_temp,
             "Maximum Fet Temperature-BMS(C)": max_fet_temp,
+            "Minimum Fet Temperature-BMS(C)": min_fet_temp,
             "Maximum Afe Temperature-BMS(C)": max_afe_temp,
+            "Minimum Afe Temperature-BMS(C)": min_afe_temp,
             "Maximum PCB Temperature-BMS(C)": max_pcb_temp,
-            "Maximum MCU Temperature(C)": max_mcu_temp,
-            "Maximum Motor Temperature(C)": max_motor_temp,
-            "Abnormal Motor Temperature Detected(C)": abnormal_motor_temp_detected,
+            # "Abnormal Motor Temperature Detected(C)": abnormal_motor_temp_detected,
             "highest cell temp(C)": max_cell_temp,
             "lowest cell temp(C)": min_cell_temp,
             "Difference between Highest and Lowest Cell Temperature at 100% SOC(C)": CellTempDiff,
-            "Battery Voltage(V)": batteryVoltage,
-            "Total energy charged(kWh)- Calculated_BatteryData": total_energy_kwh,
-            "Electricity consumption units(kW)": total_energy_kw,
+            # "Battery Voltage(V)": batteryVoltage,
+            "Voltage at cutoff (V)":voltage_at_cutoff,
+            # "Electricity consumption units(kW)": total_energy_kw,
             "Cycle Count of battery": cycleCount,
             # "Cruising Speed (Rpm)": cruising_rpm,
             # "cruising_speed (km/hr)":cruise_speed,
-            "Maximum Motor speed (RPM)":Max_motor_rpm,
-            "Peak speed (Km/hr)":peak_speed,
-            "Voltage at cutoff (V)":voltage_at_cutoff,
-            "Avg_speed with idle(km/hr)":avg_speed_with_idle,
-            "Avg_speed without idle(km/hr)":avg_speed_without_idle,
-            "Average_current (With regen and with Idle) (A)":abs(average_current_withRegen_withIdling),
-            "Average_current (With regen and without Idle) (A)":abs(average_current_withRegen_withoutIdling),
-            "Average_current (Without regen and with Idle) (A)":abs(average_current_withoutRegen_withIdling),
-            "Average_current (Without regen and without Idle) (A)- (Avg. Discharge Current)":abs(average_current_withoutRegen_withoutIdling),
             }
         
         mode_values = data_resampled['Mode_Ack [SA: 02]'].unique() #If Mode_Ack [SA: 02] has values [1, 2, 2, 3, 1], unique() will return array([1, 2, 3]).
@@ -896,12 +929,7 @@ def Influx_LX70_input(input_folder_path):
         ppt_data["Idling time percentage"] = idling_percentage
         ppt_data.update(speed_range_percentages)
     
-        # Calculate power using PackCurr [SA: 06] and PackVol [SA: 06]
-        data_resampled['Power'] = -data_resampled['PackCurr [SA: 06]'] * data_resampled['PackVol [SA: 06]']
-    
-        # Find the peak power
-        peak_power = data_resampled['Power'].max()
-        print("Peak Power:", peak_power)
+
 
 
         # Filter the DataFrame to include only positive current values
@@ -969,13 +997,7 @@ def Influx_LX70_input(input_folder_path):
         # print("Difference in Temperature:", temp_difference, "C")
     
         # Get the maximum temperature of FetTemp [SA: 08]
-        max_fet_temp = data_resampled['FetTemp [SA: 08]'].max()
-        print("Maximum Fet Temperature:", max_fet_temp, "C")
-    
-        # Get the maximum temperature of AfeTemp [SA: 0C]
-        max_afe_temp = data_resampled['AfeTemp [SA: 0C]'].max()
-        print("Maximum Afe Temperature:", max_afe_temp, "C")
-    
+     
         # Get the maximum temperature of PcbTemp [SA: 0C]
         max_pcb_temp = data_resampled['PcbTemp [SA: 0C]'].max()
         print("Maximum PCB Temperature:", max_pcb_temp, "C")
@@ -1166,9 +1188,9 @@ def Influx_LX70_input(input_folder_path):
                 bars = plt.bar(idling_speed_columns, transposed_df.iloc[0][idling_speed_columns], color=idling_speed_colors)
                 # plt.bar(idling_speed_columns, transposed_df.iloc[0][idling_speed_columns], color=idling_speed_colors)
                 plt.xlabel('Metrics')
-                plt.ylabel('Values')
-                plt.title('Time_each speed interval')
-                plt.xticks(rotation=-20, ha='left', fontsize=10)  # Adjust rotation and alignment
+                plt.ylabel('Values(%)')
+                plt.title('Time_each speed interval(%)')
+                plt.xticks(rotation=-20, ha='left', fontsize=8)  # Adjust rotation and alignment
 
 
                 # Annotate bars with values
