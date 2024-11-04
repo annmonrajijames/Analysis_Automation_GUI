@@ -1341,6 +1341,29 @@ def Influx_NDuro_NoGPS_input(input_folder_path):
     
     main_folder_path = input_folder_path
 
+    def convert_and_replace_xlsx_with_csv(folder_path):
+        """
+        Converts all .xlsx files in the specified folder to .csv format and deletes the original .xlsx files.
+
+        Args:
+        folder_path (str): The path to the folder containing the .xlsx files.
+        """
+        # List all files in the directory
+        for filename in os.listdir(folder_path):
+            if filename.endswith('.xlsx'):
+                # Construct full file path for the Excel file
+                file_path = os.path.join(folder_path, filename)
+                # Read the Excel file
+                df = pd.read_excel(file_path)
+                # Construct the .csv file path
+                csv_path = os.path.join(folder_path, filename[:-5] + '.csv')
+                # Write to a .csv file, overwriting any existing file with the same name
+                df.to_csv(csv_path, index=False)
+                print(f"Converted and replaced {filename} with {os.path.basename(csv_path)}")
+                # Remove the original Excel file
+                os.remove(file_path)
+                print(f"Deleted original Excel file: {filename}")
+
     def process_csv_file(file_path):
         try:
             # Read the first line to get the date and time from the header
@@ -1427,6 +1450,7 @@ def Influx_NDuro_NoGPS_input(input_folder_path):
                 except Exception as e:
                     print(f"Error processing file {filename}: {str(e)}")
 
+    convert_and_replace_xlsx_with_csv(main_folder_path)
     process_all_csv_files(main_folder_path)
     organize_files(main_folder_path)
 
