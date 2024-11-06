@@ -148,6 +148,10 @@ class DynamicPlotApp:
     def plot_selected_parameters(self):
         print("Plotting selected parameters...")  # Debugging line
 
+        # Get current limits before clearing
+        xlim = self.ax.get_xlim()
+        ylim = self.ax.get_ylim()
+
         # Clear the axes before plotting
         self.ax.clear()
         self.ax.grid(True, linestyle='--', alpha=0.7)
@@ -210,11 +214,16 @@ class DynamicPlotApp:
 
         self.ax.set_xlabel(x_label)
 
+        # Restore the limits after plotting
+        self.ax.set_xlim(xlim)
+        self.ax.set_ylim(ylim)
+
         # Update legend to show currently plotted parameters only
         self.ax.legend(loc="upper right")
 
         self.canvas.draw()
         self.cursor.connect("add", lambda sel: self.update_zoom(sel))
+
 
     def update_zoom(self, sel):
         if sel.artist:
