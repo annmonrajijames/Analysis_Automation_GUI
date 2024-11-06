@@ -404,36 +404,33 @@ class PlotApp:
         if self.fig:
             plt.close(self.fig)
 
-        # Create a new figure and axes
+        # Create a new figure and primary axis
         self.fig, self.ax_primary = plt.subplots(figsize=(10, 6))
-        
-        # List to keep track of all y-axes
-        self.y_axes = [self.ax_primary]  # Start with primary y-axis
+        self.y_axes = [self.ax_primary]  # Start with primary y-axis only
 
-        # Loop through selected columns and plot each
+        # Plot each selected column
         for i, col in enumerate(selected_columns):
             for df in self.data_frames:
-                # Ensure that index_column is numeric and usable for plotting
-                x = df[index_column]  # Use the selected index column here
+                x = df[index_column]  # X-axis data
                 y = df[col]
 
-                # Create a new y-axis for every new parameter
-                if i > 0:  # For secondary and tertiary y-axes
+                # Add new secondary axis if needed
+                if i > 0:
                     new_ax = self.ax_primary.twinx()
-                    new_ax.spines['right'].set_position(('outward', 60 * (i - 1)))  # Offset each new axis
-                    self.y_axes.append(new_ax)  # Keep track of all y-axes
+                    new_ax.spines['right'].set_position(('outward', 60 * (i - 1)))
+                    self.y_axes.append(new_ax)
                     ax = new_ax
                 else:
                     ax = self.ax_primary
 
-                ax.plot(x, y, label=col, color=plt.cm.viridis(i / len(selected_columns)))  # Different colors
-                ax.set_ylabel(f"{col} Values")  # Set label for each y-axis
+                ax.plot(x, y, label=col, color=plt.cm.viridis(i / len(selected_columns)))
+                ax.set_ylabel(f"{col} Values")
 
-        # Set labels and title
+        # Set x-axis label and title
         self.ax_primary.set_xlabel(index_column)
         self.ax_primary.set_title("Data Plot")
 
-        # Update legends for all axes
+        # Update legends
         handles, labels = self.ax_primary.get_legend_handles_labels()
         for ax in self.y_axes[1:]:
             h, l = ax.get_legend_handles_labels()
@@ -445,80 +442,80 @@ class PlotApp:
         # Add interactive data cursors
         mplcursors.cursor(hover=True)
 
-        # Create a canvas for the plot and pack it into the plot frame
+        # Draw the canvas
         canvas = FigureCanvasTkAgg(self.fig, master=self.plot_frame)
         canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
-
-        # Create a navigation toolbar for the plot
         toolbar = NavigationToolbar2Tk(canvas, self.plot_frame)
         toolbar.update()
         canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
-
-        # Draw the canvas
         canvas.draw()
 
-        # Connect the toolbar's 'home' button to reset zoom
-        toolbar.home = lambda: (self.ax_primary.set_xlim(None), self.ax_primary.set_ylim(None),
-                                [ax.set_ylim(None) for ax in self.y_axes[1:]])
+        # Connect the toolbar's 'home' button
+        toolbar.home = lambda: (
+            self.ax_primary.set_xlim(None), 
+            self.ax_primary.set_ylim(None), 
+            [ax.set_ylim(None) for ax in self.y_axes[1:]]
+        )
 
     def update_plot(self, selected_columns, retain_zoom=False):
-        # Get the current axes limits if retaining zoom
+        # Step 1: Retain zoom if requested
         if retain_zoom:
             xlim = self.ax_primary.get_xlim()
             ylim_primary = self.ax_primary.get_ylim()
-            ylim_secondary = [ax.get_ylim() for ax in self.y_axes[1:]]  # Get ylim for all secondary axes
+            ylim_secondary = [ax.get_ylim() for ax in self.y_axes[1:]]
         else:
-            ylim_primary = None
-            ylim_secondary = []
+            xlim, ylim_primary, ylim_secondary = None, None, []
 
-        # Clear the current plot without resetting the figure
-        self.ax_primary.cla()
+        # Step 2: Clear the previous plot
+        self.ax_primary.clear()
         for ax in self.y_axes[1:]:
-            ax.cla()
+            ax.remove()  # Remove all secondary y-axes
+        self.y_axes = [self.ax_primary]  # Reset y_axes to contain only primary axis
 
-        # Reset y_axes list to only contain primary y-axis
-        self.y_axes = [self.ax_primary]
+        # Step 3: If no columns are selected, don't plot anything
+        if not selected_columns:
+            self.fig.canvas.draw_idle()  # Clear the canvas
+            return
 
-        # Loop through selected columns and update existing plot
+        # Step 4: Plot the selected columns
         for i, col in enumerate(selected_columns):
             for df in self.data_frames:
-                # Ensure that the selected index column is usable for plotting
-                x = df[self.index_column_dropdown.get()]  # Use the selected index column here
+                # Ensure the index column is numeric and usable
+                x = df[self.index_column_dropdown.get()]
                 y = df[col]
 
-                # Create a new y-axis for every new parameter
-                if i > 0:  # For secondary and tertiary y-axes
+                # Create a new y-axis for each additional parameter beyond the first
+                if i > 0:
                     new_ax = self.ax_primary.twinx()
                     new_ax.spines['right'].set_position(('outward', 60 * (i - 1)))  # Offset each new axis
-                    self.y_axes.append(new_ax)  # Keep track of all y-axes
+                    self.y_axes.append(new_ax)  # Keep track of new axes
                     ax = new_ax
                 else:
-                    ax = self.ax_primary
+                    ax = self.ax_primary  # Use primary axis for the first parameter
 
-                ax.plot(x, y, label=col, color=plt.cm.viridis(i / len(selected_columns)))  # Different colors
-                ax.set_ylabel(f"{col} Values")  # Set label for each y-axis
+                ax.plot(x, y, label=col, color=plt.cm.viridis(i / len(selected_columns)))
+                ax.set_ylabel(f"{col} Values")
 
-        # Set labels and title
+        # Step 5: Set labels and titles
         self.ax_primary.set_xlabel(self.index_column_dropdown.get())
         self.ax_primary.set_title("Updated Data Plot")
 
-        # Update legends for all axes
+        # Step 6: Update legends for all axes
         handles, labels = self.ax_primary.get_legend_handles_labels()
         for ax in self.y_axes[1:]:
             h, l = ax.get_legend_handles_labels()
             handles.extend(h)
             labels.extend(l)
-
         self.ax_primary.legend(handles, labels, loc='upper left')
 
-        # Restore the axes limits if retaining zoom
-        if retain_zoom:
+        # Step 7: Restore zoom if applicable
+        if retain_zoom and xlim and ylim_primary:
             self.ax_primary.set_xlim(xlim)
             self.ax_primary.set_ylim(ylim_primary)
             for ax, ylim in zip(self.y_axes[1:], ylim_secondary):
                 ax.set_ylim(ylim)
 
-        # Redraw the canvas without affecting the zoom level
+        # Step 8: Redraw the canvas with the updated plot
         self.fig.canvas.draw_idle()
 
 
