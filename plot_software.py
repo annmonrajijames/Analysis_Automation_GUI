@@ -143,7 +143,14 @@ class PlotApp:
         self.ax_secondary = None
         self.ax_tertiary = None
         self.plot_initialized = False
- 
+
+        # Create a separate window for plotting
+        self.plot_window = tk.Toplevel(self.root)
+        self.plot_window.title("Data Plot")
+        self.plot_window.geometry("800x600")  # Set the window size for the plot
+        self.plot_frame = tk.Frame(self.plot_window)
+        self.plot_frame.pack(fill=tk.BOTH, expand=True)
+
     def browse_file(self):
         # Allow the user to select any file type
         file_paths = filedialog.askopenfilenames(filetypes=[("All files", "*.*")])
@@ -215,7 +222,6 @@ class PlotApp:
                     except Exception as e:
                         print(f"Error parsing Time column: {e}")
  
-
  #######################For converting Datetime timestamp to Time format
                 print("Initial")
                 if 'DATETIME' not in self.data.columns:  #if 'DATETIME' not in column Present 
@@ -224,10 +230,6 @@ class PlotApp:
                     # Parse the time, defaulting to ":00" if seconds are missing
                     start_time = datetime.strptime(start_time_str, '%d-%m-%y %H:%M')
                     print("Start_time--->",start_time)
-
-
-
-                    
 
                     # Function to convert fractional seconds to hh:mm:ss format
                     def convert_to_hhmmss(row, start_time):
@@ -270,7 +272,6 @@ class PlotApp:
                     self.data['DATETIME'] = self.data['DATETIME'] + pd.to_timedelta('5h30m')
 
                     print("GPS DATA AVAILABLE")
-
 
  #######################
                 # Store data for each file in the list
@@ -398,10 +399,11 @@ class PlotApp:
         else:
             messagebox.showerror("Error", "Please select at least one column.")
 
+
  
     def plot_columns(self, selected_columns, index_column, file_directory):
         # Clear previous plots if necessary
-        if self.fig:
+        if hasattr(self, 'fig') and self.fig:
             plt.close(self.fig)
 
         # Create a new figure and primary axis
@@ -442,20 +444,26 @@ class PlotApp:
         # Add interactive data cursors
         mplcursors.cursor(hover=True)
 
-        # Draw the canvas
-        canvas = FigureCanvasTkAgg(self.fig, master=self.plot_frame)
-        canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
-        toolbar = NavigationToolbar2Tk(canvas, self.plot_frame)
-        toolbar.update()
-        canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
-        canvas.draw()
+        # Make sure the plot window is shown
+        if hasattr(self, 'plot_window'):
+            self.plot_window.deiconify()  # Show the plot window
 
-        # Connect the toolbar's 'home' button
-        toolbar.home = lambda: (
-            self.ax_primary.set_xlim(None), 
-            self.ax_primary.set_ylim(None), 
-            [ax.set_ylim(None) for ax in self.y_axes[1:]]
-        )
+        # Draw the canvas
+        if hasattr(self, 'plot_frame'):
+            canvas = FigureCanvasTkAgg(self.fig, master=self.plot_frame)
+            canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
+            toolbar = NavigationToolbar2Tk(canvas, self.plot_frame)
+            toolbar.update()
+            canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
+            canvas.draw()
+
+        # Connect the toolbar's 'home' button (reset zoom functionality)
+        if toolbar:
+            toolbar.home = lambda: (
+                self.ax_primary.set_xlim(None), 
+                self.ax_primary.set_ylim(None), 
+                [ax.set_ylim(None) for ax in self.y_axes[1:]]
+            )
 
     def update_plot(self, selected_columns, retain_zoom=False):
         # Step 1: Retain zoom if requested
@@ -517,7 +525,6 @@ class PlotApp:
 
         # Step 8: Redraw the canvas with the updated plot
         self.fig.canvas.draw_idle()
-
 
 # Create the application window
 if __name__ == "__main__":
