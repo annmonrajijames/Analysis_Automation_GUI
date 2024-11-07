@@ -236,9 +236,9 @@ def Influx_NDuro_NoGPS_input(input_folder_path):
         data.dropna(subset=['SOCAh [SA: 08]'], inplace=True)
 
         
-        if 'DATETIME' not in data.columns:  #if 'DATETIME' not in column Present 
+        if 'DATETIME' not in data.columns:  #if 'DATETIME' not in column Present  
             # start_time_str = '01-08-24 14:16:00'  # Update this with your actual start time
-            start_time_str = data['Creation Time'].iloc[0]  # Update this with your actual start time
+            start_time_str = data['Creation Time'].iloc[0][:14]  # Update this with your actual start time
             # Parse the time, defaulting to ":00" if seconds are missing
             start_time = datetime.strptime(start_time_str, '%d-%m-%y %H:%M')
             print("Start_time--->",start_time)
