@@ -912,13 +912,15 @@ def Bytebeam_NDuro_input(input_folder_path):
             if len(mode_values) == 1:
                 mode = mode_values[0]
                 if mode == 2:
-                    ppt_data["Mode"] = "Normal mode"
+                    ppt_data["Mode"] = "Normal mode: 100%"
                 elif mode == 6:
-                    ppt_data["Mode"] = "Fast Mode"
+                    ppt_data["Mode"] = "Fast Mode: 100%"
                 elif mode == 4:
-                    ppt_data["Mode"] = "Eco mode"
+                    ppt_data["Mode"] = "Eco mode: 100%"
                 elif mode == 5:
-                    ppt_data["Mode"] = "Limp mode"
+                    ppt_data["Mode"] = "Limp mode: 100%"
+                elif mode == 7:
+                    ppt_data["Mode"] = "Secure mode: 100%"
             else:
                 # Mode changes throughout the log file
                 mode_counts = data_resampled['Mode_Ack_408094978'].value_counts(normalize=True) * 100
@@ -931,7 +933,9 @@ def Bytebeam_NDuro_input(input_folder_path):
                     elif mode == 4:
                         mode_strings.append(f"Eco mode\n{percentage:.2f}%")
                     elif mode == 5:
-                        mode_strings.append(f"Limp mode\n{percentage:.2f}%")  
+                        mode_strings.append(f"Limp mode\n{percentage:.2f}%") 
+                    elif mode == 7:
+                        mode_strings.append(f"Secure mode\n{percentage:.2f}%") 
                 ppt_data["Mode"] = "\n".join(mode_strings)
         
             # Add calculated parameters to ppt_data

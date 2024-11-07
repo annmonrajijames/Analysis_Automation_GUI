@@ -935,6 +935,9 @@ def Influx_NDuro_NoGPS_input(input_folder_path):
                 ppt_data["Mode"] = "Eco mode: 100%"
             elif mode == 5:
                 ppt_data["Mode"] = "Limp mode: 100%"
+            elif mode == 7:
+                ppt_data["Mode"] = "Secure mode: 100%"
+            
         else:
             # Mode changes throughout the log file
             # mode_counts = data_resampled['Mode_Ack [SA: 02]'].value_counts(normalize=True) * 100
@@ -957,6 +960,8 @@ def Influx_NDuro_NoGPS_input(input_folder_path):
                         mode_strings.append(f"Eco mode\n{percentage:.2f}%")
                     elif mode == 5:
                         mode_strings.append(f"Limp mode\n{percentage:.2f}%")
+                    elif mode == 7:
+                        mode_strings.append(f"Secure mode\n{percentage:.2f}%")
             ppt_data["Mode"] = "\n".join(mode_strings)
     
     
