@@ -6,6 +6,10 @@ import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
 import numpy as np
 import mplcursors  # Import mplcursors
+<<<<<<< HEAD
+=======
+from datetime import datetime, timedelta
+>>>>>>> 983d8280db6ab5f94918c4eae79a34543bcad18b
 
 # Tkinter GUI Setup
 class PlotApp:
@@ -13,6 +17,7 @@ class PlotApp:
         self.root = root
         self.root.title("Data Plotter")
 
+<<<<<<< HEAD
         # Main frame
         self.main_frame = tk.Frame(root)
         self.main_frame.pack(fill=tk.BOTH, expand=True)
@@ -28,6 +33,52 @@ class PlotApp:
         # Make the plot frame expand more
         self.main_frame.columnconfigure(1, weight=1)
         self.main_frame.rowconfigure(0, weight=1)
+=======
+        # Create a main canvas for the entire page
+        self.main_canvas = tk.Canvas(root)
+        self.main_canvas.pack(side="left", fill=tk.BOTH, expand=True)
+
+        # Add scrollbar to the canvas
+        self.main_scrollbar = tk.Scrollbar(root, orient="vertical", command=self.main_canvas.yview)
+        self.main_scrollbar.pack(side="right", fill="y")
+        self.main_canvas.configure(yscrollcommand=self.main_scrollbar.set)
+
+        # Create a frame inside the canvas to hold the actual content
+        self.page_frame = tk.Frame(self.main_canvas)
+
+        # Bind the frame configuration to update the scroll region
+        self.page_frame.bind(
+            "<Configure>",
+            lambda e: self.main_canvas.configure(scrollregion=self.main_canvas.bbox("all"))
+        )
+
+        # Create a window within the canvas to contain the frame
+        self.main_canvas.create_window((0, 0), window=self.page_frame, anchor="nw")
+
+        # Bind mouse wheel scrolling to the entire canvas
+        self.page_frame.bind_all("<MouseWheel>", self._on_mousewheel)
+
+        # Main content inside the frame
+        self.build_ui()
+
+    def _on_mousewheel(self, event):
+        """Enable scrolling the entire page with mouse wheel."""
+        self.main_canvas.yview_scroll(-1 * int((event.delta / 120)), "units")
+
+    def build_ui(self):
+        """Build the UI inside the scrollable page_frame."""
+        # Control frame on the left
+        self.control_frame = tk.Frame(self.page_frame)
+        self.control_frame.grid(row=0, column=0, sticky="ns", padx=10, pady=10)
+
+        # Plot frame on the right
+        self.plot_frame = tk.Frame(self.page_frame)
+        self.plot_frame.grid(row=0, column=1, sticky="nsew", padx=10, pady=10)
+
+        # Make the plot frame expand more
+        self.page_frame.columnconfigure(1, weight=1)
+        self.page_frame.rowconfigure(0, weight=1)
+>>>>>>> 983d8280db6ab5f94918c4eae79a34543bcad18b
 
         # File Path Input
         self.label = tk.Label(self.control_frame, text="Select Files:")
@@ -67,6 +118,17 @@ class PlotApp:
         self.canvas.pack(side="left", fill="both", expand=True)
         self.scrollbar.pack(side="right", fill="y")
 
+<<<<<<< HEAD
+=======
+        # Bind mouse wheel scrolling to the checkboxes
+        self.canvas.bind_all("<MouseWheel>", self._on_mousewheel)
+
+        # Checkbox for Select All
+        self.select_all_var = tk.IntVar()
+        self.select_all_checkbox = tk.Checkbutton(self.control_frame, text="Select All", variable=self.select_all_var, command=self.toggle_select_all)
+        self.select_all_checkbox.pack(pady=5)
+
+>>>>>>> 983d8280db6ab5f94918c4eae79a34543bcad18b
         # Dropdown for Index Column Selection
         self.index_label = tk.Label(self.control_frame, text="Select Index Column:")
         self.index_label.pack(pady=5)
@@ -79,20 +141,52 @@ class PlotApp:
         self.selected_columns_display = tk.Label(self.control_frame, text="", wraplength=400, justify="left")
         self.selected_columns_display.pack(pady=5)
 
+<<<<<<< HEAD
+=======
+        # Frame for checkboxes of selected columns
+        self.selected_columns_frame = tk.Frame(self.control_frame)
+        self.selected_columns_frame.pack(pady=5)
+
+>>>>>>> 983d8280db6ab5f94918c4eae79a34543bcad18b
         # Submit Button
         self.submit_button = tk.Button(self.control_frame, text="Submit", command=self.submit)
         self.submit_button.pack(pady=10)
 
+<<<<<<< HEAD
         # Reset Button
         self.reset_button = tk.Button(self.control_frame, text="Reset View", command=self.reset_view)
         self.reset_button.pack(pady=10)
+=======
+        # Final Submit Button
+        self.index_label = tk.Label(self.control_frame, text="After Doing, Modification in the existing plot(Click 'Re-set' Button for 'submit'):")
+        self.index_label.pack(pady=2)
+        self.final_submit_button = tk.Button(self.control_frame, text="Re-set", command=self.final_submit)
+        self.final_submit_button.pack(pady=10)
+>>>>>>> 983d8280db6ab5f94918c4eae79a34543bcad18b
 
         # To hold the extracted column names and their corresponding checkboxes
         self.column_names = []
         self.checkbox_vars = {}  # To store the checkbox variables for each column
         self.data_frames = []  # List to store data from multiple files
         self.file_directory = ""  # Directory of the files
+<<<<<<< HEAD
         self.zoomed_dataframe = None  # To store the zoomed data
+=======
+
+        # Variables for plot management
+        self.fig = None
+        self.ax_primary = None
+        self.ax_secondary = None
+        self.ax_tertiary = None
+        self.plot_initialized = False
+
+        # Create a separate window for plotting
+        self.plot_window = tk.Toplevel(self.root)
+        self.plot_window.title("Data Plot")
+        self.plot_window.geometry("800x600")  # Set the window size for the plot
+        self.plot_frame = tk.Frame(self.plot_window)
+        self.plot_frame.pack(fill=tk.BOTH, expand=True)
+>>>>>>> 983d8280db6ab5f94918c4eae79a34543bcad18b
 
     def browse_file(self):
         # Allow the user to select any file type
@@ -149,18 +243,82 @@ class PlotApp:
 
                 # Drop any fully empty rows
                 self.data.dropna(how='all', inplace=True)
+<<<<<<< HEAD
 
+=======
+                print("before")
+>>>>>>> 983d8280db6ab5f94918c4eae79a34543bcad18b
                 # Handle Serial Number addition if missing
                 if 'Serial Number' not in self.data.columns:
                     self.data['Serial Number'] = range(1, len(self.data) + 1)
 
                 # Handle Time conversion if present
+                print("after")
+                print(self.data['Serial Number'].iloc[0])
                 if 'Time' in self.data.columns:
                     try:
                         self.data['Time'] = pd.to_datetime(self.data['Time'], errors='coerce')
+                        # self.data['Time'] = self.data['Time'].astype(str)
+                        
                     except Exception as e:
                         print(f"Error parsing Time column: {e}")
+<<<<<<< HEAD
 
+=======
+ 
+ #######################For converting Datetime timestamp to Time format
+                print("Initial")
+                if 'DATETIME' not in self.data.columns:  #if 'DATETIME' not in column Present 
+                    # start_time_str = '01-08-24 14:16:00'  # Update this with your actual start time
+                    start_time_str = self.data['Creation Time'].iloc[0]  # Update this with your actual start time
+                    # Parse the time, defaulting to ":00" if seconds are missing
+                    start_time = datetime.strptime(start_time_str, '%d-%m-%y %H:%M')
+                    print("Start_time--->",start_time)
+
+                    # Function to convert fractional seconds to hh:mm:ss format
+                    def convert_to_hhmmss(row, start_time):
+                        # Calculate the time in seconds
+                        seconds = row['Time'] 
+                        # Add these seconds to the start time
+                        new_time = start_time + timedelta(seconds=seconds)
+                        # Return the time in 'dd-mm-yy hh:mm:ss' format
+                        return new_time.strftime('%d-%m-%y %H:%M:%S')
+
+                    # Apply the function to create a new column
+                    self.data['DATETIME'] = self.data.apply(convert_to_hhmmss, start_time=start_time, axis=1)
+
+                    self.data['DATETIME'] = pd.to_datetime(self.build_uidata['DATETIME'])
+
+
+                    self.data = self.data.dropna(subset=['DATETIME'])
+                
+                    self.data['DATETIME'] = pd.to_datetime(self.data['DATETIME'], unit='s')
+                
+
+                    self.data['DATETIME'] = pd.to_datetime(self.data['DATETIME'])
+
+                    print("GPS DATA NOT AVAILABLE , SO USED CREATION TIME TO CALCULATE DATETIME")
+
+                
+                else:    
+                    print("Final")                                                                                   #if 'DATETIME' column Present 
+                    self.data['DATETIME'] = pd.to_numeric(self.data['DATETIME'], errors='coerce')
+            
+                    # Drop or handle NaN values
+                    self.data = self.data.dropna(subset=['DATETIME'])
+                
+                    # Convert the Unix timestamps to datetime
+                    self.data['DATETIME'] = pd.to_datetime(self.data['DATETIME'], unit='s')
+                
+                    # Print the converted DATETIME column
+                    # data['DATETIME'] = pd.to_datetime(data['DATETIME'])
+
+                    self.data['DATETIME'] = self.data['DATETIME'] + pd.to_timedelta('5h30m')
+
+                    print("GPS DATA AVAILABLE")
+
+ #######################
+>>>>>>> 983d8280db6ab5f94918c4eae79a34543bcad18b
                 # Store data for each file in the list
                 self.data_frames.append(self.data)
 
@@ -171,8 +329,15 @@ class PlotApp:
                 self.update_checkboxes()
 
                 # Filter only 'Serial Number' and 'Time' columns for index selection
+<<<<<<< HEAD
                 filtered_index_columns = [col for col in self.column_names if col.lower() in ['serial number', 'time']]
 
+=======
+                # filtered_index_columns = [col for col in self.column_names if col.lower() in ['serial number', 'datetime']]
+
+                filtered_index_columns = [col for col in self.column_names if col.lower() in ['datetime']]
+ 
+>>>>>>> 983d8280db6ab5f94918c4eae79a34543bcad18b
                 # Populate the dropdown with filtered column names for index selection
                 self.index_column_dropdown['values'] = filtered_index_columns
 
@@ -209,7 +374,23 @@ class PlotApp:
         if self.data_frames and selected_columns and selected_index_column:
             # Display selected columns for verification
             self.selected_columns_display.config(text="\n".join(selected_columns))
+<<<<<<< HEAD
     
+=======
+
+            # Clear previous selected columns checkboxes
+            for widget in self.selected_columns_frame.winfo_children():
+                widget.destroy()
+
+            # Create checkboxes for selected columns
+            self.selected_checkbox_vars = {}
+            for col in selected_columns:
+                var = tk.IntVar(value=1)
+                checkbox = tk.Checkbutton(self.selected_columns_frame, text=col, variable=var)
+                checkbox.pack(anchor="w")
+                self.selected_checkbox_vars[col] = var
+
+>>>>>>> 983d8280db6ab5f94918c4eae79a34543bcad18b
             # Ask for confirmation before plotting
             if messagebox.askyesno("Confirm Plot", "Do you want to plot the selected columns?"):
                 # Use zoomed_dataframe if it exists, otherwise use the original data
@@ -253,6 +434,7 @@ class PlotApp:
         else:
             raise ValueError(f"Unknown index column: {index_column}")
 
+<<<<<<< HEAD
         # Assign columns to the different y-axes
         for j, col in enumerate(columns):
             if col in data.columns:
@@ -274,6 +456,65 @@ class PlotApp:
                         line, = ax_tertiary.plot(x_axis, numeric_data, label=trace_name, color=color, picker=True)
                    
                     all_lines.append(line)  # Store the line for toggling later
+=======
+    def final_submit(self):
+        # Get the columns that are checked in the selected columns frame
+        final_selected_columns = [col for col, var in self.selected_checkbox_vars.items() if var.get()]
+
+        if final_selected_columns:
+            # Display final selected columns for verification
+            self.selected_columns_display.config(text="\n".join(final_selected_columns))
+
+            # Proceed with the final selected columns
+            messagebox.showinfo("Final Selection", f"Final selected columns: {', '.join(final_selected_columns)}")
+
+            # Update the plot with the final selected columns without resetting zoom
+            self.update_plot(final_selected_columns, retain_zoom=True)
+        else:
+            messagebox.showerror("Error", "Please select at least one column.")
+
+
+ 
+    def plot_columns(self, selected_columns, index_column, file_directory):
+        # Clear previous plots if necessary
+        if hasattr(self, 'fig') and self.fig:
+            plt.close(self.fig)
+
+        # Create a new figure and primary axis
+        self.fig, self.ax_primary = plt.subplots(figsize=(10, 6))
+        self.y_axes = [self.ax_primary]  # Start with primary y-axis only
+
+        # Plot each selected column
+        for i, col in enumerate(selected_columns):
+            for df in self.data_frames:
+                x = df[index_column]  # X-axis data
+                y = df[col]
+
+                # Add new secondary axis if needed
+                if i > 0:
+                    new_ax = self.ax_primary.twinx()
+                    new_ax.spines['right'].set_position(('outward', 60 * (i - 1)))
+                    self.y_axes.append(new_ax)
+                    ax = new_ax
+                else:
+                    ax = self.ax_primary
+
+                ax.plot(x, y, label=col, color=plt.cm.viridis(i / len(selected_columns)))
+                ax.set_ylabel(f"{col} Values")
+
+        # Set x-axis label and title
+        self.ax_primary.set_xlabel(index_column)
+        self.ax_primary.set_title("Data Plot")
+
+        # Update legends
+        handles, labels = self.ax_primary.get_legend_handles_labels()
+        for ax in self.y_axes[1:]:
+            h, l = ax.get_legend_handles_labels()
+            handles.extend(h)
+            labels.extend(l)
+
+        self.ax_primary.legend(handles, labels, loc='upper left')
+>>>>>>> 983d8280db6ab5f94918c4eae79a34543bcad18b
 
                 else:
                     print(f"Column '{col}' contains no valid numeric data after conversion.")
@@ -317,6 +558,7 @@ class PlotApp:
         # Add mplcursors for interactive annotations
         mplcursors.cursor(hover=True)
 
+<<<<<<< HEAD
         # Save the plot as an image file
         os.makedirs(save_path, exist_ok=True)
         graph_path = os.path.join(save_path, 'Generated_Plot.png')
@@ -396,6 +638,91 @@ class PlotApp:
         self.zoomed_dataframe = None
         self.submit()
 
+=======
+        # Make sure the plot window is shown
+        if hasattr(self, 'plot_window'):
+            self.plot_window.deiconify()  # Show the plot window
+
+        # Draw the canvas
+        if hasattr(self, 'plot_frame'):
+            canvas = FigureCanvasTkAgg(self.fig, master=self.plot_frame)
+            canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
+            toolbar = NavigationToolbar2Tk(canvas, self.plot_frame)
+            toolbar.update()
+            canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
+            canvas.draw()
+
+        # Connect the toolbar's 'home' button (reset zoom functionality)
+        if toolbar:
+            toolbar.home = lambda: (
+                self.ax_primary.set_xlim(None), 
+                self.ax_primary.set_ylim(None), 
+                [ax.set_ylim(None) for ax in self.y_axes[1:]]
+            )
+
+    def update_plot(self, selected_columns, retain_zoom=False):
+        # Step 1: Retain zoom if requested
+        if retain_zoom:
+            xlim = self.ax_primary.get_xlim()
+            ylim_primary = self.ax_primary.get_ylim()
+            ylim_secondary = [ax.get_ylim() for ax in self.y_axes[1:]]
+        else:
+            xlim, ylim_primary, ylim_secondary = None, None, []
+
+        # Step 2: Clear the previous plot
+        self.ax_primary.clear()
+        for ax in self.y_axes[1:]:
+            ax.remove()  # Remove all secondary y-axes
+        self.y_axes = [self.ax_primary]  # Reset y_axes to contain only primary axis
+
+        # Step 3: If no columns are selected, don't plot anything
+        if not selected_columns:
+            self.fig.canvas.draw_idle()  # Clear the canvas
+            return
+
+        # Step 4: Plot the selected columns
+        for i, col in enumerate(selected_columns):
+            for df in self.data_frames:
+                # Ensure the index column is numeric and usable
+                x = df[self.index_column_dropdown.get()]
+                y = df[col]
+
+                # Create a new y-axis for each additional parameter beyond the first
+                if i > 0:
+                    new_ax = self.ax_primary.twinx()
+                    new_ax.spines['right'].set_position(('outward', 60 * (i - 1)))  # Offset each new axis
+                    self.y_axes.append(new_ax)  # Keep track of new axes
+                    ax = new_ax
+                else:
+                    ax = self.ax_primary  # Use primary axis for the first parameter
+
+                ax.plot(x, y, label=col, color=plt.cm.viridis(i / len(selected_columns)))
+                ax.set_ylabel(f"{col} Values")
+
+        # Step 5: Set labels and titles
+        self.ax_primary.set_xlabel(self.index_column_dropdown.get())
+        self.ax_primary.set_title("Updated Data Plot")
+
+        # Step 6: Update legends for all axes
+        handles, labels = self.ax_primary.get_legend_handles_labels()
+        for ax in self.y_axes[1:]:
+            h, l = ax.get_legend_handles_labels()
+            handles.extend(h)
+            labels.extend(l)
+        self.ax_primary.legend(handles, labels, loc='upper left')
+
+        # Step 7: Restore zoom if applicable
+        if retain_zoom and xlim and ylim_primary:
+            self.ax_primary.set_xlim(xlim)
+            self.ax_primary.set_ylim(ylim_primary)
+            for ax, ylim in zip(self.y_axes[1:], ylim_secondary):
+                ax.set_ylim(ylim)
+
+        # Step 8: Redraw the canvas with the updated plot
+        self.fig.canvas.draw_idle()
+
+# Create the application window
+>>>>>>> 983d8280db6ab5f94918c4eae79a34543bcad18b
 if __name__ == "__main__":
     root = tk.Tk()
     app = PlotApp(root)
