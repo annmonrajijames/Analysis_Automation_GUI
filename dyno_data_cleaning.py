@@ -67,8 +67,10 @@ class FileProcessorApp:
             # Save the modified log data to the new file
             if file_path.endswith('.csv'):
                 log_data.to_csv(output_file_path, index=False)
+                print("Modified Data saved to:", output_file_path)
             else:
                 log_data.to_excel(output_file_path, index=False)
+                print("Modified Data saved to:", output_file_path)
 
             messagebox.showinfo("Success", f"Modified log data saved to: {output_file_path}")
         except Exception as e:
