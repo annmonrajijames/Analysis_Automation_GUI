@@ -362,7 +362,11 @@ class PlotApp:
 
             # Ask for confirmation before plotting
             if messagebox.askyesno("Confirm Plot", "Do you want to plot the selected columns?"):
-                # If this is the first submission, initialize the plot
+                # Check if plot window exists and recreate if closed
+                if not hasattr(self, 'plot_window') or not self.plot_window.winfo_exists():
+                    self.plot_initialized = False  # Reset initialization state if window is closed
+
+                # If this is the first submission or plot window was recreated, initialize the plot
                 if not self.plot_initialized:
                     self.plot_columns(selected_columns, selected_index_column, self.file_directory)
                     self.plot_initialized = True
@@ -383,6 +387,7 @@ class PlotApp:
         else:
             messagebox.showerror("Error", "Please select columns and an index column.")
 
+
     def final_submit(self):
         # Get the columns that are checked in the selected columns frame
         final_selected_columns = [col for col, var in self.selected_checkbox_vars.items() if var.get()]
@@ -400,7 +405,6 @@ class PlotApp:
             messagebox.showerror("Error", "Please select at least one column.")
 
 
- 
     def plot_columns(self, selected_columns, index_column, file_directory):
         # Clear previous plots if necessary
         if hasattr(self, 'fig') and self.fig:
@@ -444,26 +448,44 @@ class PlotApp:
         # Add interactive data cursors
         mplcursors.cursor(hover=True)
 
-        # Make sure the plot window is shown
-        if hasattr(self, 'plot_window'):
-            self.plot_window.deiconify()  # Show the plot window
+        # Ensure the plot window exists and is visible
+        if not hasattr(self, 'plot_window') or not self.plot_window.winfo_exists():
+            # Create the plot window if it doesn't exist or was destroyed
+            self.plot_window = tk.Toplevel(self.root)
+            self.plot_window.title("Plot Window")
+            self.plot_window.geometry("800x600")  # Customize size
 
-        # Draw the canvas
-        if hasattr(self, 'plot_frame'):
-            canvas = FigureCanvasTkAgg(self.fig, master=self.plot_frame)
-            canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
-            toolbar = NavigationToolbar2Tk(canvas, self.plot_frame)
-            toolbar.update()
-            canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
-            canvas.draw()
+        # Ensure plot_frame exists and is properly initialized
+        if not hasattr(self, 'plot_frame') or not self.plot_frame.winfo_exists():
+            # Create plot_frame if it doesn't exist or was destroyed
+            self.plot_frame = tk.Frame(self.plot_window)
+            self.plot_frame.pack(fill=tk.BOTH, expand=True)
 
-        # Connect the toolbar's 'home' button (reset zoom functionality)
+        # Remove the old canvas before creating a new one
+        if hasattr(self, 'canvas') and isinstance(self.canvas, FigureCanvasTkAgg):
+            # Destroy the old canvas if it exists
+            self.canvas.get_tk_widget().destroy()
+
+        # Create canvas and pack it into the plot_frame
+        self.canvas = FigureCanvasTkAgg(self.fig, master=self.plot_frame)
+        self.canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
+
+        # Create a toolbar and pack it into the plot_frame
+        toolbar = NavigationToolbar2Tk(self.canvas, self.plot_frame)
+        toolbar.update()
+        self.canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
+        self.canvas.draw()
+
+        # Update the 'home' button functionality to reset zoom
         if toolbar:
             toolbar.home = lambda: (
-                self.ax_primary.set_xlim(None), 
-                self.ax_primary.set_ylim(None), 
+                self.ax_primary.set_xlim(None),
+                self.ax_primary.set_ylim(None),
                 [ax.set_ylim(None) for ax in self.y_axes[1:]]
             )
+
+        # Deiconify the plot window (show it) if it's hidden
+        self.plot_window.deiconify()
 
     def update_plot(self, selected_columns, retain_zoom=False):
         # Step 1: Retain zoom if requested
