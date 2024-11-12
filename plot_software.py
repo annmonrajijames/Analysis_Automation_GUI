@@ -193,13 +193,13 @@ class PlotApp:
  
                 elif file_path.endswith('.xlsx'):
                     # Load the first few rows to check for header location
-                    df = pd.read_excel(file_path, nrows=5, skip_blank_lines=True)
- 
+                    df = pd.read_excel(file_path, nrows=5)  # Removed 'skip_blank_lines'
+
                     # Detect where the header row is
                     header_row = detect_header_row(df)
- 
+
                     # Reload the Excel file using the detected header row
-                    self.data = pd.read_excel(file_path, header=header_row, skip_blank_lines=True)
+                    self.data = pd.read_excel(file_path, header=header_row)  # Removed 'skip_blank_lines'
  
                 else:
                     raise ValueError("Unsupported file format")
@@ -362,24 +362,20 @@ class PlotApp:
 
             # Ask for confirmation before plotting
             if messagebox.askyesno("Confirm Plot", "Do you want to plot the selected columns?"):
-                # If this is the first submission, initialize the plot
+                # Check if plot window exists and recreate if closed
+                if not hasattr(self, 'plot_window') or not self.plot_window.winfo_exists():
+                    self.plot_initialized = False  # Reset initialization state if window is closed
+
+                # If this is the first submission or plot window was recreated, initialize the plot
                 if not self.plot_initialized:
                     self.plot_columns(selected_columns, selected_index_column, self.file_directory)
                     self.plot_initialized = True
                 else:
-                    # Store current zoom limits if they exist
-                    current_xlim = self.ax_primary.get_xlim()
-                    current_ylim = self.ax_primary.get_ylim()
+                    # Create new y-axes and plot data for the selected parameters only
+                    self.create_y_axes(selected_columns, selected_index_column)
 
                     # Update the plot with new parameters
                     self.update_plot(selected_columns)
-
-                    # Restore the zoom limits if the user has zoomed in
-                    if current_xlim != self.ax_primary.get_xlim() or current_ylim != self.ax_primary.get_ylim():
-                        self.ax_primary.set_xlim(current_xlim)
-                        self.ax_primary.set_ylim(current_ylim)
-
-                    self.fig.canvas.draw_idle()  # Refresh the canvas
         else:
             messagebox.showerror("Error", "Please select columns and an index column.")
 
@@ -391,16 +387,58 @@ class PlotApp:
             # Display final selected columns for verification
             self.selected_columns_display.config(text="\n".join(final_selected_columns))
 
-            # Proceed with the final selected columns
-            messagebox.showinfo("Final Selection", f"Final selected columns: {', '.join(final_selected_columns)}")
+            # Create new y-axes and plot data for the final selected parameters only
+            self.create_y_axes(final_selected_columns, self.index_column_dropdown.get())
 
-            # Update the plot with the final selected columns without resetting zoom
+            # Update the plot with the final selected columns
             self.update_plot(final_selected_columns, retain_zoom=True)
         else:
             messagebox.showerror("Error", "Please select at least one column.")
 
+    def create_y_axes(self, selected_columns, index_column):
+        """
+        Create y-axes for the selected parameters and plot data.
+        Clears existing secondary y-axes before creating new ones.
+        """
+        # Clear existing secondary y-axes
+        if hasattr(self, 'y_axes'):
+            for ax in self.y_axes[1:]:  # Skip primary axis
+                ax.remove()
+        self.y_axes = [self.ax_primary]  # Reset to primary axis only
 
- 
+        # Plot only for the selected columns
+        for i, col in enumerate(selected_columns):
+            for df in self.data_frames:
+                x = df[index_column]  # X-axis data
+                y = df[col]  # Y-axis data for the selected column
+
+                # Create a new y-axis for each selected parameter beyond the first
+                if i > 0:
+                    new_ax = self.ax_primary.twinx()  # Create a new y-axis twin
+                    new_ax.spines['right'].set_position(('outward', 60 * (i - 1)))  # Offset each new axis
+                    self.y_axes.append(new_ax)
+                    ax = new_ax
+                else:
+                    ax = self.ax_primary  # Use primary axis for the first parameter
+
+                # Clear any previous plots on the axis
+                ax.clear()
+
+                # Plot the data on the respective axis
+                ax.plot(x, y, label=col, color=plt.cm.viridis(i / len(selected_columns)))
+                ax.set_ylabel(f"{col} Values")
+
+        # Update legends for all axes
+        handles, labels = self.ax_primary.get_legend_handles_labels()
+        for ax in self.y_axes[1:]:
+            h, l = ax.get_legend_handles_labels()
+            handles.extend(h)
+            labels.extend(l)
+        self.ax_primary.legend(handles, labels, loc='upper left')
+
+
+
+
     def plot_columns(self, selected_columns, index_column, file_directory):
         # Clear previous plots if necessary
         if hasattr(self, 'fig') and self.fig:
@@ -444,29 +482,47 @@ class PlotApp:
         # Add interactive data cursors
         mplcursors.cursor(hover=True)
 
-        # Make sure the plot window is shown
-        if hasattr(self, 'plot_window'):
-            self.plot_window.deiconify()  # Show the plot window
+        # Ensure the plot window exists and is visible
+        if not hasattr(self, 'plot_window') or not self.plot_window.winfo_exists():
+            # Create the plot window if it doesn't exist or was destroyed
+            self.plot_window = tk.Toplevel(self.root)
+            self.plot_window.title("Plot Window")
+            self.plot_window.geometry("800x600")  # Customize size
 
-        # Draw the canvas
-        if hasattr(self, 'plot_frame'):
-            canvas = FigureCanvasTkAgg(self.fig, master=self.plot_frame)
-            canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
-            toolbar = NavigationToolbar2Tk(canvas, self.plot_frame)
-            toolbar.update()
-            canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
-            canvas.draw()
+        # Ensure plot_frame exists and is properly initialized
+        if not hasattr(self, 'plot_frame') or not self.plot_frame.winfo_exists():
+            # Create plot_frame if it doesn't exist or was destroyed
+            self.plot_frame = tk.Frame(self.plot_window)
+            self.plot_frame.pack(fill=tk.BOTH, expand=True)
 
-        # Connect the toolbar's 'home' button (reset zoom functionality)
+        # Remove the old canvas before creating a new one
+        if hasattr(self, 'canvas') and isinstance(self.canvas, FigureCanvasTkAgg):
+            # Destroy the old canvas if it exists
+            self.canvas.get_tk_widget().destroy()
+
+        # Create canvas and pack it into the plot_frame
+        self.canvas = FigureCanvasTkAgg(self.fig, master=self.plot_frame)
+        self.canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
+
+        # Create a toolbar and pack it into the plot_frame
+        toolbar = NavigationToolbar2Tk(self.canvas, self.plot_frame)
+        toolbar.update()
+        self.canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
+        self.canvas.draw()
+
+        # Update the 'home' button functionality to reset zoom
         if toolbar:
             toolbar.home = lambda: (
-                self.ax_primary.set_xlim(None), 
-                self.ax_primary.set_ylim(None), 
+                self.ax_primary.set_xlim(None),
+                self.ax_primary.set_ylim(None),
                 [ax.set_ylim(None) for ax in self.y_axes[1:]]
             )
 
+        # Deiconify the plot window (show it) if it's hidden
+        self.plot_window.deiconify()
+
     def update_plot(self, selected_columns, retain_zoom=False):
-        # Step 1: Retain zoom if requested
+        # Retain zoom state if specified
         if retain_zoom:
             xlim = self.ax_primary.get_xlim()
             ylim_primary = self.ax_primary.get_ylim()
@@ -474,41 +530,37 @@ class PlotApp:
         else:
             xlim, ylim_primary, ylim_secondary = None, None, []
 
-        # Step 2: Clear the previous plot
+        # Clear and reset plots
         self.ax_primary.clear()
         for ax in self.y_axes[1:]:
             ax.remove()  # Remove all secondary y-axes
         self.y_axes = [self.ax_primary]  # Reset y_axes to contain only primary axis
 
-        # Step 3: If no columns are selected, don't plot anything
         if not selected_columns:
-            self.fig.canvas.draw_idle()  # Clear the canvas
+            self.fig.canvas.draw_idle()
             return
 
-        # Step 4: Plot the selected columns
+        # Plot selected columns
         for i, col in enumerate(selected_columns):
             for df in self.data_frames:
-                # Ensure the index column is numeric and usable
                 x = df[self.index_column_dropdown.get()]
                 y = df[col]
 
-                # Create a new y-axis for each additional parameter beyond the first
+                # Handle secondary y-axes
                 if i > 0:
                     new_ax = self.ax_primary.twinx()
-                    new_ax.spines['right'].set_position(('outward', 60 * (i - 1)))  # Offset each new axis
-                    self.y_axes.append(new_ax)  # Keep track of new axes
+                    new_ax.spines['right'].set_position(('outward', 60 * (i - 1)))
+                    self.y_axes.append(new_ax)
                     ax = new_ax
                 else:
-                    ax = self.ax_primary  # Use primary axis for the first parameter
+                    ax = self.ax_primary
 
                 ax.plot(x, y, label=col, color=plt.cm.viridis(i / len(selected_columns)))
                 ax.set_ylabel(f"{col} Values")
 
-        # Step 5: Set labels and titles
+        # Update labels, titles, and legends
         self.ax_primary.set_xlabel(self.index_column_dropdown.get())
         self.ax_primary.set_title("Updated Data Plot")
-
-        # Step 6: Update legends for all axes
         handles, labels = self.ax_primary.get_legend_handles_labels()
         for ax in self.y_axes[1:]:
             h, l = ax.get_legend_handles_labels()
@@ -516,14 +568,16 @@ class PlotApp:
             labels.extend(l)
         self.ax_primary.legend(handles, labels, loc='upper left')
 
-        # Step 7: Restore zoom if applicable
-        if retain_zoom and xlim and ylim_primary:
-            self.ax_primary.set_xlim(xlim)
-            self.ax_primary.set_ylim(ylim_primary)
+        # Restore zoom if applicable
+        if retain_zoom:
+            if xlim:
+                self.ax_primary.set_xlim(xlim)
+            if ylim_primary:
+                self.ax_primary.set_ylim(ylim_primary)
             for ax, ylim in zip(self.y_axes[1:], ylim_secondary):
-                ax.set_ylim(ylim)
+                if ylim:
+                    ax.set_ylim(ylim)
 
-        # Step 8: Redraw the canvas with the updated plot
         self.fig.canvas.draw_idle()
 
 # Create the application window
