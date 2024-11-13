@@ -393,16 +393,12 @@ class PlotApp:
         final_selected_columns = [col for col, var in self.selected_checkbox_vars.items() if var.get()]
 
         if final_selected_columns:
-            # Display final selected columns for verification
-            self.selected_columns_display.config(text="\n".join(final_selected_columns))
-
-            # Proceed with the final selected columns
+            # Update the plot with the final selected columns
+            self.update_plot(final_selected_columns)
             messagebox.showinfo("Final Selection", f"Final selected columns: {', '.join(final_selected_columns)}")
-
-            # Update the plot with the final selected columns without resetting zoom
-            self.update_plot(final_selected_columns, retain_zoom=True)
         else:
             messagebox.showerror("Error", "Please select at least one column.")
+
 
 
     def plot_columns(self, selected_columns, index_column, file_directory):
@@ -488,65 +484,54 @@ class PlotApp:
         self.plot_window.deiconify()
 
     def update_plot(self, selected_columns, retain_zoom=False):
-        # Step 1: Retain zoom if requested
         if retain_zoom:
             xlim = self.ax_primary.get_xlim()
             ylim_primary = self.ax_primary.get_ylim()
             ylim_secondary = [ax.get_ylim() for ax in self.y_axes[1:]]
-        else:
-            xlim, ylim_primary, ylim_secondary = None, None, []
 
-        # Step 2: Clear the previous plot
+        # Clear all axes and start fresh
         self.ax_primary.clear()
         for ax in self.y_axes[1:]:
-            ax.remove()  # Remove all secondary y-axes
-        self.y_axes = [self.ax_primary]  # Reset y_axes to contain only primary axis
+            ax.remove()
+        self.y_axes = [self.ax_primary]  # Reset y_axes to contain only the primary axis
 
-        # Step 3: If no columns are selected, don't plot anything
-        if not selected_columns:
-            self.fig.canvas.draw_idle()  # Clear the canvas
-            return
-
-        # Step 4: Plot the selected columns
+        # Re-plot only the selected columns
         for i, col in enumerate(selected_columns):
             for df in self.data_frames:
-                # Ensure the index column is numeric and usable
                 x = df[self.index_column_dropdown.get()]
                 y = df[col]
 
-                # Create a new y-axis for each additional parameter beyond the first
-                if i > 0:
+                if i >= len(self.y_axes):
                     new_ax = self.ax_primary.twinx()
-                    new_ax.spines['right'].set_position(('outward', 60 * (i - 1)))  # Offset each new axis
-                    self.y_axes.append(new_ax)  # Keep track of new axes
+                    new_ax.spines['right'].set_position(('outward', 60 * i))
+                    self.y_axes.append(new_ax)
                     ax = new_ax
                 else:
-                    ax = self.ax_primary  # Use primary axis for the first parameter
+                    ax = self.y_axes[i]
 
                 ax.plot(x, y, label=col, color=plt.cm.viridis(i / len(selected_columns)))
                 ax.set_ylabel(f"{col} Values")
 
-        # Step 5: Set labels and titles
         self.ax_primary.set_xlabel(self.index_column_dropdown.get())
         self.ax_primary.set_title("Updated Data Plot")
 
-        # Step 6: Update legends for all axes
-        handles, labels = self.ax_primary.get_legend_handles_labels()
-        for ax in self.y_axes[1:]:
+        # Update legends
+        handles, labels = [], []
+        for ax in self.y_axes:
             h, l = ax.get_legend_handles_labels()
             handles.extend(h)
             labels.extend(l)
         self.ax_primary.legend(handles, labels, loc='upper left')
 
-        # Step 7: Restore zoom if applicable
-        if retain_zoom and xlim and ylim_primary:
+        # Restore zoom if applicable
+        if retain_zoom:
             self.ax_primary.set_xlim(xlim)
             self.ax_primary.set_ylim(ylim_primary)
             for ax, ylim in zip(self.y_axes[1:], ylim_secondary):
                 ax.set_ylim(ylim)
 
-        # Step 8: Redraw the canvas with the updated plot
         self.fig.canvas.draw_idle()
+
 
 # Create the application window
 if __name__ == "__main__":
