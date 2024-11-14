@@ -125,12 +125,6 @@ class PlotApp:
         self.submit_button = tk.Button(self.control_frame, text="Submit", command=self.submit)
         self.submit_button.pack(pady=10)
 
-        # Final Submit Button
-        self.index_label = tk.Label(self.control_frame, text="After Doing, Modification in the existing plot(Click 'Re-set' Button for 'submit'):")
-        self.index_label.pack(pady=2)
-        self.final_submit_button = tk.Button(self.control_frame, text="Re-set", command=self.final_submit)
-        self.final_submit_button.pack(pady=10)
-
         # To hold the extracted column names and their corresponding checkboxes
         self.column_names = []
         self.checkbox_vars = {}  # To store the checkbox variables for each column
@@ -386,20 +380,6 @@ class PlotApp:
                     self.fig.canvas.draw_idle()  # Refresh the canvas
         else:
             messagebox.showerror("Error", "Please select columns and an index column.")
-
-
-    def final_submit(self):
-        # Get the columns that are checked in the selected columns frame
-        final_selected_columns = [col for col, var in self.selected_checkbox_vars.items() if var.get()]
-
-        if final_selected_columns:
-            # Update the plot with the final selected columns
-            self.update_plot(final_selected_columns)
-            messagebox.showinfo("Final Selection", f"Final selected columns: {', '.join(final_selected_columns)}")
-        else:
-            messagebox.showerror("Error", "Please select at least one column.")
-
-
 
     def plot_columns(self, selected_columns, index_column, file_directory):
         # Clear previous plots if necessary
