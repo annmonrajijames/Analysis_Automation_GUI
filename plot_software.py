@@ -497,7 +497,6 @@ class PlotApp:
 
         # Remove the old canvas before creating a new one
         if hasattr(self, 'canvas') and isinstance(self.canvas, FigureCanvasTkAgg):
-            # Destroy the old canvas if it exists
             self.canvas.get_tk_widget().destroy()
 
         # Create canvas and pack it into the plot_frame
@@ -505,14 +504,16 @@ class PlotApp:
         self.canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
 
         # Create a toolbar and pack it into the plot_frame
-        toolbar = NavigationToolbar2Tk(self.canvas, self.plot_frame)
-        toolbar.update()
-        self.canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
+        if not hasattr(self, 'toolbar') or not self.toolbar.winfo_exists():
+            self.toolbar = NavigationToolbar2Tk(self.canvas, self.plot_frame)
+            self.toolbar.update()
+            self.toolbar.pack(fill=tk.X)
+
         self.canvas.draw()
 
         # Update the 'home' button functionality to reset zoom
-        if toolbar:
-            toolbar.home = lambda: (
+        if self.toolbar:
+            self.toolbar.home = lambda: (
                 self.ax_primary.set_xlim(None),
                 self.ax_primary.set_ylim(None),
                 [ax.set_ylim(None) for ax in self.y_axes[1:]]
@@ -520,6 +521,7 @@ class PlotApp:
 
         # Deiconify the plot window (show it) if it's hidden
         self.plot_window.deiconify()
+
 
     def update_plot(self, selected_columns, retain_zoom=False):
         # Retain zoom state if specified

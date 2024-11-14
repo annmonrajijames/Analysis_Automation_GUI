@@ -1,0 +1,74 @@
+import matplotlib.pyplot as plt
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+import tkinter as tk
+import numpy as np
+
+class InteractivePlot:
+    def __init__(self, root):
+        self.root = root
+        self.fig, self.ax = plt.subplots()
+        self.canvas = FigureCanvasTkAgg(self.fig, master=root)
+        self.canvas.draw()
+        self.canvas.get_tk_widget().pack(side=tk.TOP, fill=tk.BOTH, expand=1)
+
+        # Sample data
+        x = np.linspace(0, 10, 100)
+        y1 = np.sin(x)
+        y2 = np.cos(x)
+        y3 = np.exp(x)
+
+        # Create multiple y-axes
+        self.ax2 = self.ax.twinx()
+        self.ax3 = self.ax.twinx()
+
+        # Plot the data
+        self.line1, = self.ax.plot(x, y1, color='blue', label='sin(x)')
+        self.line2, = self.ax2.plot(x, y2, color='red', label='cos(x)')
+        self.line3, = self.ax3.plot(x, y3, color='green', label='exp(x)')
+
+        # Set labels and legends
+        self.ax.set_xlabel('x')
+        self.ax.set_ylabel('sin(x)')
+        self.ax2.set_ylabel('cos(x)')
+        self.ax3.set_ylabel('exp(x)')
+
+        self.fig.legend()
+
+        # Add zoom and reset buttons
+        zoom_button = tk.Button(root, text="Zoom", command=self.zoom)
+        zoom_button.pack(side=tk.LEFT)
+        reset_button = tk.Button(root, text="Reset", command=self.reset)
+        reset_button.pack(side=tk.LEFT)
+
+    def zoom(self):
+        # Implement zoom functionality using Matplotlib's zoom feature
+        self.canvas.mpl_connect('button_press_event', self.on_press)
+        self.canvas.mpl_connect('button_release_event', self.on_release)
+
+    def on_press(self, event):
+        # Store starting coordinates for zooming
+        self.start_x = event.xdata
+        self.start_y = event.ydata
+
+    def on_release(self, event):
+        # Calculate zoom box based on start and end coordinates
+        end_x = event.xdata
+        end_y = event.ydata
+
+        # Implement zoom logic on all axes
+        self.ax.set_xlim(min(self.start_x, end_x), max(self.start_x, end_x))
+        self.ax.set_ylim(min(self.start_y, end_y), max(self.start_y, end_y))
+        self.ax2.set_xlim(min(self.start_x, end_x), max(self.start_x, end_x))
+        self.ax2.set_ylim(min(self.start_y, end_y), max(self.start_y, end_y))
+        self.ax3.set_xlim(min(self.start_x, end_x), max(self.start_x, end_x))
+        self.ax3.set_ylim(min(self.start_y, end_y), max(self.start_y, end_y))
+
+        self.canvas.draw()
+
+    def reset(self):
+        # Reset the zoom to the original view
+        self.ax.set_xlim(self.ax.get_xlim()[0], self.ax.get_xlim()[1])
+        self.ax.set_ylim(self.ax.get_ylim()[0], self.ax.get_ylim()[1])
+        self.ax2.set_xlim(self.ax2.get_xlim()[0], self.ax2.get_xlim()[1])
+        self.ax2.set_ylim(self.ax2.get_ylim()[0], self.ax2.get_ylim()[1])
+        self.ax
