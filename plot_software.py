@@ -14,6 +14,9 @@ class PlotApp:
         self.root = root
         self.root.title("Data Plotter")
 
+        # Initialize selected_checkbox_vars
+        self.selected_checkbox_vars = {}  # This stores the variables associated with the checkboxes for selected columns
+
         # Create a main canvas for the entire page
         self.main_canvas = tk.Canvas(root)
         self.main_canvas.pack(side="left", fill=tk.BOTH, expand=True)
@@ -346,40 +349,26 @@ class PlotApp:
             for widget in self.selected_columns_frame.winfo_children():
                 widget.destroy()
 
-            # Create checkboxes for selected columns
-            self.selected_checkbox_vars = {}
+            # Create checkboxes for selected columns and bind them
             for col in selected_columns:
-                var = tk.IntVar(value=1)
+                var = tk.IntVar(value=1)  # Start with the checkbox selected
                 checkbox = tk.Checkbutton(self.selected_columns_frame, text=col, variable=var)
                 checkbox.pack(anchor="w")
-                self.selected_checkbox_vars[col] = var
+                checkbox.bind("<Button-1>", lambda event, col=col: self.toggle_column_visibility(col))
+                self.selected_checkbox_vars[col] = var  # Store the variable
 
-            # Ask for confirmation before plotting
             if messagebox.askyesno("Confirm Plot", "Do you want to plot the selected columns?"):
-                # Check if plot window exists and recreate if closed
                 if not hasattr(self, 'plot_window') or not self.plot_window.winfo_exists():
-                    self.plot_initialized = False  # Reset initialization state if window is closed
+                    self.plot_initialized = False
 
-                # If this is the first submission or plot window was recreated, initialize the plot
                 if not self.plot_initialized:
                     self.plot_columns(selected_columns, selected_index_column, self.file_directory)
                     self.plot_initialized = True
                 else:
-                    # Store current zoom limits if they exist
-                    current_xlim = self.ax_primary.get_xlim()
-                    current_ylim = self.ax_primary.get_ylim()
-
-                    # Update the plot with new parameters
                     self.update_plot(selected_columns)
-
-                    # Restore the zoom limits if the user has zoomed in
-                    if current_xlim != self.ax_primary.get_xlim() or current_ylim != self.ax_primary.get_ylim():
-                        self.ax_primary.set_xlim(current_xlim)
-                        self.ax_primary.set_ylim(current_ylim)
-
-                    self.fig.canvas.draw_idle()  # Refresh the canvas
         else:
             messagebox.showerror("Error", "Please select columns and an index column.")
+
 
     def plot_columns(self, selected_columns, index_column, file_directory):
         # Clear previous plots if necessary
@@ -389,11 +378,12 @@ class PlotApp:
         # Create a new figure and primary axis
         self.fig, self.ax_primary = plt.subplots(figsize=(10, 6))
         self.y_axes = [self.ax_primary]  # Start with primary y-axis only
+        self.lines = {}  # Dictionary to store line objects
 
         # Plot each selected column
         for i, col in enumerate(selected_columns):
             for df in self.data_frames:
-                x = df[index_column]  # X-axis data
+                x = df[index_column]
                 y = df[col]
 
                 # Add new secondary axis if needed
@@ -405,63 +395,64 @@ class PlotApp:
                 else:
                     ax = self.ax_primary
 
-                ax.plot(x, y, label=col, color=plt.cm.viridis(i / len(selected_columns)))
+                line, = ax.plot(x, y, label=col, color=plt.cm.viridis(i / len(selected_columns)))
                 ax.set_ylabel(f"{col} Values")
+                self.lines[col] = line  # Store the line object
 
         # Set x-axis label and title
         self.ax_primary.set_xlabel(index_column)
         self.ax_primary.set_title("Data Plot")
 
         # Update legends
-        handles, labels = self.ax_primary.get_legend_handles_labels()
-        for ax in self.y_axes[1:]:
-            h, l = ax.get_legend_handles_labels()
-            handles.extend(h)
-            labels.extend(l)
-
-        self.ax_primary.legend(handles, labels, loc='upper left')
+        self.update_legends()
 
         # Add interactive data cursors
         mplcursors.cursor(hover=True)
 
-        # Ensure the plot window exists and is visible
-        if not hasattr(self, 'plot_window') or not self.plot_window.winfo_exists():
-            # Create the plot window if it doesn't exist or was destroyed
-            self.plot_window = tk.Toplevel(self.root)
-            self.plot_window.title("Plot Window")
-            self.plot_window.geometry("800x600")  # Customize size
+        # Setup the canvas and toolbar
+        self.setup_canvas_toolbar()
 
+    def toggle_column_visibility(self, column):
+        """Toggle visibility of a plot line and its axis."""
+        line = self.lines[column]
+        line.set_visible(not line.get_visible())  # Toggle visibility
+
+        # Find which y-axis the line is associated with
+        for ax in self.y_axes:
+            if line in ax.get_lines():
+                ax.set_visible(any(line.get_visible() for line in ax.get_lines()))  # Toggle axis visibility if any line is visible
+
+        # Refresh the legend and canvas
+        self.update_legends()
+        self.fig.canvas.draw_idle()
+
+    def update_legends(self):
+        """Update legends to show only visible lines."""
+        handles, labels = [], []
+        for ax in self.y_axes:
+            for line in ax.get_lines():
+                if line.get_visible():
+                    handles.append(line)
+                    labels.append(line.get_label())
+        self.ax_primary.legend(handles, labels, loc='upper left')
+
+    def setup_canvas_toolbar(self):
         # Ensure plot_frame exists and is properly initialized
         if not hasattr(self, 'plot_frame') or not self.plot_frame.winfo_exists():
-            # Create plot_frame if it doesn't exist or was destroyed
             self.plot_frame = tk.Frame(self.plot_window)
             self.plot_frame.pack(fill=tk.BOTH, expand=True)
 
-        # Remove the old canvas before creating a new one
+        # Remove old canvas
         if hasattr(self, 'canvas') and isinstance(self.canvas, FigureCanvasTkAgg):
-            # Destroy the old canvas if it exists
             self.canvas.get_tk_widget().destroy()
 
-        # Create canvas and pack it into the plot_frame
+        # Create new canvas and toolbar
         self.canvas = FigureCanvasTkAgg(self.fig, master=self.plot_frame)
         self.canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
-
-        # Create a toolbar and pack it into the plot_frame
         toolbar = NavigationToolbar2Tk(self.canvas, self.plot_frame)
         toolbar.update()
         self.canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
         self.canvas.draw()
-
-        # Update the 'home' button functionality to reset zoom
-        if toolbar:
-            toolbar.home = lambda: (
-                self.ax_primary.set_xlim(None),
-                self.ax_primary.set_ylim(None),
-                [ax.set_ylim(None) for ax in self.y_axes[1:]]
-            )
-
-        # Deiconify the plot window (show it) if it's hidden
-        self.plot_window.deiconify()
 
     def update_plot(self, selected_columns, retain_zoom=False):
         if retain_zoom:
