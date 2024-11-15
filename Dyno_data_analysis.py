@@ -3,8 +3,8 @@ import openpyxl
 import os
 
 # Load the CSV file
-input_file_path = r"C:\Users\kamalesh.kb\NOV_7_IDC_DATA\Cleaned_data\Modified_FL-07_11_2024-NDURO_190KG_ORD_TRIAL-19_MORNING_TRIAL_DATA.csv"
-input_df = pd.read_csv(input_file_path)
+input_file_path = r"C:\Users\srijanani.LTPL\Downloads\modified_log_data.xlsx"
+input_df = pd.read_excel(input_file_path)
 
 # Filter data based on SOC conditions
 df = input_df[(input_df['SOC'] < 19) & (input_df['SOC'] > 2)]
