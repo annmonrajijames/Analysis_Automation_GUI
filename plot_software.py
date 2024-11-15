@@ -413,18 +413,31 @@ class PlotApp:
         self.setup_canvas_toolbar()
 
     def toggle_column_visibility(self, column):
-        """Toggle visibility of a plot line and its axis."""
+        """Toggle visibility of a plot line and its associated y-axis."""
         line = self.lines[column]
-        line.set_visible(not line.get_visible())  # Toggle visibility
+        is_visible = line.get_visible()
+        line.set_visible(not is_visible)  # Toggle line visibility
 
-        # Find which y-axis the line is associated with
-        for ax in self.y_axes:
+        # Ensure primary axis stays visible, especially the x-axis
+        if column in self.lines:
+            # Check if any line on the primary y-axis is visible
+            any_visible_primary = any(l.get_visible() for l in self.ax_primary.get_lines())
+            self.ax_primary.set_visible(any_visible_primary or True)  # Ensure primary y-axis stays visible
+
+            # Explicitly keep the x-axis visible
+            self.ax_primary.xaxis.set_visible(True)
+
+        # Find which secondary y-axis the line is associated with (if any)
+        for ax in self.y_axes[1:]:
             if line in ax.get_lines():
-                ax.set_visible(any(line.get_visible() for line in ax.get_lines()))  # Toggle axis visibility if any line is visible
+                # Toggle visibility of secondary y-axis only if any line is visible
+                ax.set_visible(any(l.get_visible() for l in ax.get_lines()))
 
         # Refresh the legend and canvas
         self.update_legends()
         self.fig.canvas.draw_idle()
+
+
 
     def update_legends(self):
         """Update legends to show only visible lines."""
@@ -455,23 +468,26 @@ class PlotApp:
         self.canvas.draw()
 
     def update_plot(self, selected_columns, retain_zoom=False):
+        # Optionally save zoom state if required
         if retain_zoom:
-            xlim = self.ax_primary.get_xlim()
+            xlim = self.ax_primary.get_xlim()  # Store x-axis limits separately
             ylim_primary = self.ax_primary.get_ylim()
             ylim_secondary = [ax.get_ylim() for ax in self.y_axes[1:]]
 
-        # Clear all axes and start fresh
-        self.ax_primary.clear()
+        # Clear only lines without removing axes, to avoid losing state
+        for line in self.ax_primary.get_lines():
+            line.remove()
         for ax in self.y_axes[1:]:
-            ax.remove()
-        self.y_axes = [self.ax_primary]  # Reset y_axes to contain only the primary axis
+            for line in ax.get_lines():
+                line.remove()
 
-        # Re-plot only the selected columns
+        # Re-plot selected columns
         for i, col in enumerate(selected_columns):
             for df in self.data_frames:
                 x = df[self.index_column_dropdown.get()]
                 y = df[col]
 
+                # Reuse or create y-axes
                 if i >= len(self.y_axes):
                     new_ax = self.ax_primary.twinx()
                     new_ax.spines['right'].set_position(('outward', 60 * i))
@@ -480,28 +496,27 @@ class PlotApp:
                 else:
                     ax = self.y_axes[i]
 
-                ax.plot(x, y, label=col, color=plt.cm.viridis(i / len(selected_columns)))
+                # Plot on the appropriate axis
+                line, = ax.plot(x, y, label=col, color=plt.cm.viridis(i / len(selected_columns)))
                 ax.set_ylabel(f"{col} Values")
+                self.lines[col] = line  # Update lines dictionary
 
+        # Set x-axis label and title
         self.ax_primary.set_xlabel(self.index_column_dropdown.get())
         self.ax_primary.set_title("Updated Data Plot")
 
-        # Update legends
-        handles, labels = [], []
-        for ax in self.y_axes:
-            h, l = ax.get_legend_handles_labels()
-            handles.extend(h)
-            labels.extend(l)
-        self.ax_primary.legend(handles, labels, loc='upper left')
-
-        # Restore zoom if applicable
+        # Restore x-axis zoom if applicable
         if retain_zoom:
-            self.ax_primary.set_xlim(xlim)
-            self.ax_primary.set_ylim(ylim_primary)
-            for ax, ylim in zip(self.y_axes[1:], ylim_secondary):
-                ax.set_ylim(ylim)
+            self.ax_primary.set_xlim(xlim)  # Restore x-axis limits
+            for ax, ylim in zip(self.y_axes, [ylim_primary] + ylim_secondary):
+                ax.set_ylim(ylim)  # Restore y-axis limits
 
+        # Update legends
+        self.update_legends()
+
+        # Redraw the canvas
         self.fig.canvas.draw_idle()
+
 
 
 # Create the application window
