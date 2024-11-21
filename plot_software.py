@@ -62,13 +62,6 @@ class PlotApp:
         self.page_frame.columnconfigure(1, weight=1)
         self.page_frame.rowconfigure(0, weight=1)
 
-        # File Path Input
-        self.label = tk.Label(self.control_frame, text="Select Files:")
-        self.label.pack(pady=5)
-
-        self.file_listbox = tk.Listbox(self.control_frame, width=60, height=4)
-        self.file_listbox.pack(pady=5)
-
         #Influx data or not
         # Add a frame for influx data selection
         self.influx_frame = tk.LabelFrame(self.control_frame, text="Is data in influx?")
@@ -80,6 +73,13 @@ class PlotApp:
         self.influx_yes.pack(side="left", padx=5)
         self.influx_no = tk.Radiobutton(self.influx_frame, text="No", variable=self.influx_var, value="no")
         self.influx_no.pack(side="left", padx=5)
+
+        # File Path Input
+        self.label = tk.Label(self.control_frame, text="Select Files:")
+        self.label.pack(pady=5)
+
+        self.file_listbox = tk.Listbox(self.control_frame, width=60, height=4)
+        self.file_listbox.pack(pady=5)
 
         # Browse Button to select file
         self.browse_button = tk.Button(self.control_frame, text="Browse", command=self.browse_file)
