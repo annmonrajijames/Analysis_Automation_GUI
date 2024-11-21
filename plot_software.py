@@ -214,6 +214,11 @@ class PlotApp:
                     # Handle Time conversion if present
                     print("Input data is Influx data")
 
+                if self.influx_var.get() == "no":
+                    messagebox.showinfo("Random Data", "Random data is given as input")
+                    # Handle Time conversion if present
+                    print("Input data is Random data")
+
                 #For converting Datetime timestamp to Time format
                     if 'DATETIME' not in self.data.columns:  #if 'DATETIME' not in column Present 
                         print("DATETIME column not present")
