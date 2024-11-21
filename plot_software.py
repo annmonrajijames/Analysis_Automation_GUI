@@ -120,6 +120,14 @@ class PlotApp:
         self.select_all_checkbox = tk.Checkbutton(self.control_frame, text="Select All", variable=self.select_all_var, command=self.toggle_select_all)
         self.select_all_checkbox.pack(pady=5)
 
+          # Search Box for Index Column Selection
+        self.index_search_label = tk.Label(self.control_frame, text="Search Index Column:")
+        self.index_search_label.pack(pady=5)
+        self.index_search_entry = tk.Entry(self.control_frame, width=50)
+        self.index_search_entry.pack(pady=5)
+        self.index_search_entry.bind("<KeyRelease>", self.update_index_dropdown)
+
+
         # Dropdown for Index Column Selection
         self.index_label = tk.Label(self.control_frame, text="Select Index Column:")
         self.index_label.pack(pady=5)
@@ -202,6 +210,7 @@ class PlotApp:
                     self.data['Serial Number'] = range(1, len(self.data) + 1)
  
                 if self.influx_var.get() == "yes":
+                    messagebox.showinfo("Influx Data", "Influx data is given as input")
                     # Handle Time conversion if present
                     print("Input data is Influx data")
 
@@ -237,6 +246,9 @@ class PlotApp:
                     print(col.lower() for col in self.column_names)
                     filtered_index_columns = [col for col in self.column_names if col.lower() in ['serial number','datetime']]
 
+                    # Populate the dropdown with filtered column names for index selection
+                    self.index_column_dropdown['values'] = filtered_index_columns
+
 #  #######################
                 else:
                      # Store data for each file in the list
@@ -248,16 +260,16 @@ class PlotApp:
                     # Update the checkboxes with the full list of columns
                     self.update_checkboxes()
     
-                    filtered_index_columns = [col for col in self.column_names if col.lower() in ['serial number']]
-
+                    # filtered_index_columns = [col for col in self.column_names if col.lower() in ['serial number']]
+                    # Populate the dropdown with all column names for index selection
+                    self.index_column_dropdown['values'] = self.column_names
                
                 #Filter only 'Serial Number' and 'Time' columns for index selection
                 
 
                 # filtered_index_columns = [col for col in self.column_names if col.lower() in ['datetime']]
  
-                # Populate the dropdown with filtered column names for index selection
-                self.index_column_dropdown['values'] = filtered_index_columns
+                
  
                 print("Columns available for plotting:", self.column_names)
             except Exception as e:
@@ -289,6 +301,12 @@ class PlotApp:
 
         # Update the "Select All" checkbox state based on the visible checkboxes
         self.update_select_all_checkbox()
+
+    def update_index_dropdown(self, event=None):
+    # """Update the index column dropdown based on the search term."""
+        search_term = self.index_search_entry.get().lower()
+        filtered_index_columns = [col for col in self.column_names if search_term in col.lower()]
+        self.index_column_dropdown['values'] = filtered_index_columns
 
     def update_select_all_checkbox(self):
         """Update the state of the Select All checkbox based on filtered checkboxes."""
