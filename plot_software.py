@@ -214,10 +214,7 @@ class PlotApp:
                     # Handle Time conversion if present
                     print("Input data is Influx data")
 
-                if self.influx_var.get() == "no":
-                    messagebox.showinfo("Random Data", "Random data is given as input")
-                    # Handle Time conversion if present
-                    print("Input data is Random data")
+                
 
                 #For converting Datetime timestamp to Time format
                     if 'DATETIME' not in self.data.columns:  #if 'DATETIME' not in column Present 
@@ -255,7 +252,11 @@ class PlotApp:
                     self.index_column_dropdown['values'] = filtered_index_columns
 
 #  #######################
-                else:
+                if self.influx_var.get() == "no":
+                    messagebox.showinfo("Random Data", "Random data is given as input")
+                    # Handle Time conversion if present
+                    print("Input data is Random data")
+                    
                      # Store data for each file in the list
                     self.data_frames.append(self.data)
     
