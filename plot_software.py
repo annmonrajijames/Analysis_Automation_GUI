@@ -74,14 +74,12 @@ class PlotApp:
         self.influx_frame = tk.LabelFrame(self.control_frame, text="Is data in influx?")
         self.influx_frame.pack(pady=10)
 
-        self.influx_var = tk.StringVar(value="Yes")
+
+        self.influx_var = tk.StringVar(value="yes")
         self.influx_yes = tk.Radiobutton(self.influx_frame, text="Yes", variable=self.influx_var, value="yes")
         self.influx_yes.pack(side="left", padx=5)
         self.influx_no = tk.Radiobutton(self.influx_frame, text="No", variable=self.influx_var, value="no")
         self.influx_no.pack(side="left", padx=5)
-        print(self.influx_var.get())
-
-
 
         # Browse Button to select file
         self.browse_button = tk.Button(self.control_frame, text="Browse", command=self.browse_file)
@@ -203,45 +201,14 @@ class PlotApp:
                 if 'Serial Number' not in self.data.columns:
                     self.data['Serial Number'] = range(1, len(self.data) + 1)
  
-                # Check if data is in influx
-                print("Influx data or not",self.influx_var.get())
-                if self.influx_var.get() == "Yes":
-                    print("input data is influx")
+                if self.influx_var.get() == "yes":
                     # Handle Time conversion if present
-                    if 'Time' in self.data.columns:
-                        try:
-                            self.data['Time'] = pd.to_datetime(self.data['Time'], errors='coerce')
-                            # self.data['Time'] = self.data['Time'].astype(str)
-                            
-                        except Exception as e:
-                            print(f"Error parsing Time column: {e}")
-    
+                    print("Input data is Influx data")
+
                 #For converting Datetime timestamp to Time format
                     if 'DATETIME' not in self.data.columns:  #if 'DATETIME' not in column Present 
-                        # start_time_str = '01-08-24 14:16:00'  # Update this with your actual start time
-                        start_time_str = self.data['Creation Time'].iloc[0]  # Update this with your actual start time
-                        # Parse the time, defaulting to ":00" if seconds are missing
-                        start_time = datetime.strptime(start_time_str, '%d-%m-%y %H:%M')
-                        print("Start_time--->",start_time)
-
-                        # Function to convert fractional seconds to hh:mm:ss format
-                        def convert_to_hhmmss(row, start_time):
-                            # Calculate the time in seconds
-                            seconds = row['Time'] 
-                            # Add these seconds to the start time
-                            new_time = start_time + timedelta(seconds=seconds)
-                            # Return the time in 'dd-mm-yy hh:mm:ss' format
-                            return new_time.strftime('%d-%m-%y %H:%M:%S')
-
-                        # Apply the function to create a new column
-                        self.data['DATETIME'] = self.data.apply(convert_to_hhmmss, start_time=start_time, axis=1)
-                        self.data['DATETIME'] = pd.to_datetime(self.build_uidata['DATETIME'])
-                        self.data = self.data.dropna(subset=['DATETIME'])
-                        self.data['DATETIME'] = pd.to_datetime(self.data['DATETIME'], unit='s')
-                        self.data['DATETIME'] = pd.to_datetime(self.data['DATETIME'])
-
-                        print("GPS DATA NOT AVAILABLE , SO USED CREATION TIME TO CALCULATE DATETIME")
-
+                        print("DATETIME column not present")
+                        self.data['DATETIME'] = self.data['Time']
                     
                     else:                                                                                   #if 'DATETIME' column Present 
                         self.data['DATETIME'] = pd.to_numeric(self.data['DATETIME'], errors='coerce')
@@ -259,18 +226,16 @@ class PlotApp:
 
                         print("GPS DATA AVAILABLE")
 
-                         # Store data for each file in the list
-                        self.data_frames.append(self.data)
-        
-                        # Extract the column names
-                        self.column_names = self.data.columns.tolist()
-        
-                        # Update the checkboxes with the full list of columns
-                        self.update_checkboxes()
-                        print("-------------")
-                        print(col.lower() for col in self.column_names)
-                        print("-------------")
-                        filtered_index_columns = [col for col in self.column_names if col.lower() in ['serial number','datetime']]
+                        # Store data for each file in the list
+                    self.data_frames.append(self.data)
+    
+                    # Extract the column names
+                    self.column_names = self.data.columns.tolist()
+    
+                    # Update the checkboxes with the full list of columns
+                    self.update_checkboxes()
+                    print(col.lower() for col in self.column_names)
+                    filtered_index_columns = [col for col in self.column_names if col.lower() in ['serial number','datetime']]
 
 #  #######################
                 else:
