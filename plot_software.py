@@ -134,11 +134,11 @@ class PlotApp:
         self.index_column_dropdown = ttk.Combobox(self.control_frame, state="readonly")
         self.index_column_dropdown.pack(pady=5)
 
-        # Display Selected Columns
-        self.selected_columns_label = tk.Label(self.control_frame, text="Selected Columns:")
-        self.selected_columns_label.pack(pady=5)
-        self.selected_columns_display = tk.Label(self.control_frame, text="", wraplength=400, justify="left")
-        self.selected_columns_display.pack(pady=5)
+        # # Display Selected Columns
+        # self.selected_columns_label = tk.Label(self.control_frame, text="Selected Columns:")
+        # self.selected_columns_label.pack(pady=5)
+        # self.selected_columns_display = tk.Label(self.control_frame, text="", wraplength=400, justify="left")
+        # self.selected_columns_display.pack(pady=5)
 
         # Frame for checkboxes of selected columns
         self.selected_columns_frame = tk.Frame(self.control_frame)
@@ -338,7 +338,7 @@ class PlotApp:
 
         if self.data_frames and selected_columns and selected_index_column:
             # Display selected columns for verification
-            self.selected_columns_display.config(text="\n".join(selected_columns))
+            # self.selected_columns_display.config(text="\n".join(selected_columns))
 
             # Clear previous selected columns checkboxes
             for widget in self.selected_columns_frame.winfo_children():
