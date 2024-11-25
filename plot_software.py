@@ -205,9 +205,9 @@ class PlotApp:
                 # Drop any fully empty rows
                 self.data.dropna(how='all', inplace=True)
 #                 print("before")
-                # Handle Serial Number addition if missing
-                if 'Serial Number' not in self.data.columns:
-                    self.data['Serial Number'] = range(1, len(self.data) + 1)
+                # # Handle Serial Number addition if missing
+                # if 'Serial Number' not in self.data.columns:
+                #     self.data['Serial Number'] = range(1, len(self.data) + 1)
  
                 if self.influx_var.get() == "yes":
                     messagebox.showinfo("Influx Data", "Influx data is given as input")
@@ -246,7 +246,8 @@ class PlotApp:
                     # Update the checkboxes with the full list of columns
                     self.update_checkboxes()
                     print(col.lower() for col in self.column_names)
-                    filtered_index_columns = [col for col in self.column_names if col.lower() in ['serial number','datetime']]
+                    # filtered_index_columns = [col for col in self.column_names if col.lower() in ['serial number','datetime']]
+                    filtered_index_columns = [col for col in self.column_names if col.lower() in ['datetime']]
 
                     # Populate the dropdown with filtered column names for index selection
                     self.index_column_dropdown['values'] = filtered_index_columns
