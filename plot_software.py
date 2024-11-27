@@ -338,9 +338,6 @@ class PlotApp:
         selected_index_column = self.index_column_dropdown.get()
 
         if self.data_frames and selected_columns and selected_index_column:
-            # Display selected columns for verification
-            # self.selected_columns_display.config(text="\n".join(selected_columns))
-
             # Clear previous selected columns checkboxes
             for widget in self.selected_columns_frame.winfo_children():
                 widget.destroy()
@@ -353,28 +350,41 @@ class PlotApp:
                 checkbox.bind("<Button-1>", lambda event, col=col: self.toggle_column_visibility(col))
                 self.selected_checkbox_vars[col] = var  # Store the variable
 
-            if messagebox.askyesno("Confirm Plot", "Do you want to plot the selected columns?"):
-                if not hasattr(self, 'plot_window') or not self.plot_window.winfo_exists():
-                    self.plot_initialized = False
+            if not hasattr(self, 'plot_window') or not self.plot_window.winfo_exists():
+                # Create a new plot window if it does not exist
+                self.plot_window = tk.Toplevel(self.root)
+                self.plot_window.title("Data Plot")
+                self.plot_window.geometry("800x600")  # Set the window size for the plot
 
-                if not self.plot_initialized:
-                    self.plot_columns(selected_columns, selected_index_column, self.file_directory)
-                    self.plot_initialized = True
-                else:
-                    self.update_plot(selected_columns)
+                # Initialize plot components
+                self.fig = None
+                self.ax_primary = None
+                self.ax_secondary = None
+                self.ax_tertiary = None
+                self.plot_initialized = False
+
+            # Proceed to plot the columns
+            self.plot_columns(selected_columns, selected_index_column, self.file_directory)
         else:
             messagebox.showerror("Error", "Please select columns and an index column.")
-
 
     def plot_columns(self, selected_columns, index_column, file_directory):
         # Clear previous plots if necessary
         if hasattr(self, 'fig') and self.fig:
-            plt.close(self.fig)
+            plt.close(self.fig)  # Close the previous figure
 
-        # Create a new figure and primary axis
-        self.fig, self.ax_primary = plt.subplots(figsize=(10, 6))
-        self.y_axes = [self.ax_primary]  # Start with primary y-axis only
-        self.lines = {}  # Dictionary to store line objects
+        # Create a new figure and primary axis if not already initialized
+        if self.fig is None:
+            self.fig, self.ax_primary = plt.subplots(figsize=(10, 6))
+            self.y_axes = [self.ax_primary]  # Start with primary y-axis only
+            self.lines = {}  # Dictionary to store line objects
+        else:
+            # Clear existing lines from the axes without removing the axes
+            for line in self.ax_primary.get_lines():
+                line.remove()
+            for ax in self.y_axes[1:]:
+                for line in ax.get_lines():
+                    line.remove()
 
         # Plot each selected column
         for i, col in enumerate(selected_columns):
