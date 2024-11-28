@@ -122,9 +122,31 @@ def Influx_NDuro_NoGPS_input(input_folder_path):
     # plot_ghps(data, Path)
     
     
-    
-    # def analysis_Energy(log_file, km_file):
-    def analysis_Energy(data,subfolder_path):
+    def analysis_Energy(data, subfolder_path):
+        Brake_count = 0
+        transition_count = 0
+        prev_value = None
+
+        # Ensure we are working with a pandas Series
+        brake_data = data['Brake_Pulse [SA: 02]']
+
+        for value in brake_data:
+            # Ignore NaN values
+            if pd.isna(value):
+                continue
+            
+            if value == 1:
+                Brake_count += 1
+            
+            if prev_value is not None and value != prev_value:
+                # Count transitions from 1 to 0 and 0 to 1
+                if (prev_value == 1 and value == 0) or (prev_value == 0 and value == 1):
+                    transition_count += 1
+            
+            prev_value = value
+
+        print("Brake count --------------->", Brake_count)
+        print("Transition count --------------->", transition_count)
         dayfirst=True
 
         total_duration = 0
@@ -846,9 +868,14 @@ def Influx_NDuro_NoGPS_input(input_folder_path):
         # print("Electricity consumption units in kW", (total_energy_kw))
     
         # Add these variables and logic to ppt_data
+
+        # Count the occurrences of 1 in the 'Brake_pulse' column
+        # Loop through the 'Brake_pulse' column and count occurrences of 1
+        
     
         ppt_data = {
             "Date and localtime": str(start_localtime) + " to " + str(end_localtime),
+            "Brake_Pulse [SA: 02]" : transition_count,
             # "INFLUX ID ": InfluxId,
             "Total Time taken for the ride (HH:MM:SS) ": total_duration,
             "Starting SoC (Ah)": starting_soc_Ah,
@@ -1356,6 +1383,7 @@ def Influx_NDuro_NoGPS_input(input_folder_path):
         # List all files in the directory
         for filename in os.listdir(folder_path):
             if filename.endswith('.xlsx'):
+                print("Convertion started")
                 # Construct full file path for the Excel file
                 file_path = os.path.join(folder_path, filename)
                 # Read the Excel file
@@ -1364,6 +1392,7 @@ def Influx_NDuro_NoGPS_input(input_folder_path):
                 csv_path = os.path.join(folder_path, filename[:-5] + '.csv')
                 # Write to a .csv file, overwriting any existing file with the same name
                 df.to_csv(csv_path, index=False)
+                print("Convertion Ended")
                 print(f"Converted and replaced {filename} with {os.path.basename(csv_path)}")
                 # Remove the original Excel file
                 os.remove(file_path)

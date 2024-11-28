@@ -249,7 +249,7 @@ def Influx_LX70_input(input_folder_path):
             
         if 'DATETIME' not in data.columns:  #if 'DATETIME' not in column Present 
             # start_time_str = '01-08-24 14:16:00'  # Update this with your actual start time
-            start_time_str = data['Creation Time'].iloc[0]  # Update this with your actual start time
+            start_time_str = data['Creation Time'].iloc[0][:14]  # Update this with your actual start time
             # Parse the time, defaulting to ":00" if seconds are missing
             start_time = datetime.strptime(start_time_str, '%d-%m-%y %H:%M')
             print("Start_time--->",start_time)
@@ -1264,6 +1264,7 @@ def Influx_LX70_input(input_folder_path):
         # List all files in the directory
         for filename in os.listdir(folder_path):
             if filename.endswith('.xlsx'):
+                print("Convertion started")
                 # Construct full file path for the Excel file
                 file_path = os.path.join(folder_path, filename)
                 # Read the Excel file
@@ -1272,6 +1273,7 @@ def Influx_LX70_input(input_folder_path):
                 csv_path = os.path.join(folder_path, filename[:-5] + '.csv')
                 # Write to a .csv file, overwriting any existing file with the same name
                 df.to_csv(csv_path, index=False)
+                print("Convertion Ended")
                 print(f"Converted and replaced {filename} with {os.path.basename(csv_path)}")
                 # Remove the original Excel file
                 os.remove(file_path)
@@ -1426,7 +1428,8 @@ def Influx_LX70_input(input_folder_path):
     
             merged_file_path = os.path.join(directory, 'Analysis.xlsx')
             merged_workbook.save(filename=merged_file_path)
-            print("<----------------Analysis file is ready---------------->")
+            print("<----------------Analysis file is ready ------------------>")
+            print("Thank you, Analysis again! :)")
     
         merge_data_and_save_to_excel(main_folder_path)
     

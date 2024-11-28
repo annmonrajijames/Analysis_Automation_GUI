@@ -134,6 +134,8 @@ def Influx_NDuro_input(input_folder_path):
         fig.add_trace(go.Scatter(x=data.index, y=data['Motor_Temperature [SA: 03]'], name='Motor Temperature', line=dict(color='orange')), secondary_y=True)
         # fig.add_trace(go.Scatter(x=data.index, y=data['Power'], name='DC Power', line=dict(color='Red')), secondary_y=True)
         fig.add_trace(go.Scatter(x=data.index, y=data['DeltaCellVoltage'], name='DeltaCellVoltage', line=dict(color='Purple')), secondary_y=True)
+        fig.add_trace(go.Scatter(x=data.index, y=data['Brake_Pulse [SA: 02]'], name='Brake_Pulse [SA: 02]', line=dict(color='Purple')), secondary_y=True)
+
     
         fig.update_layout(title='Battery Pack, Motor Data, and Throttle',
                         xaxis_title='Local localtime',
@@ -711,7 +713,9 @@ def Influx_NDuro_input(input_folder_path):
         print("Total energy charged in kWh: {:.2f}".format(total_energy_kwh))
     
         total_energy_kw = total_energy_kwh / total_duration.seconds / 3600
-        print("Electricity consumption units in kW", (total_energy_kw))
+        print("`Electricity` consumption units in kW", (total_energy_kw))
+
+        
     
         # Add these variables and logic to ppt_data
     
