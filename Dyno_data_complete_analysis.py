@@ -42,15 +42,27 @@ class FileProcessorApp:
         try:
             if file_path.endswith('.csv'):
                 df = pd.read_csv(file_path)
+                # print(df.head())
             elif file_path.endswith('.xlsx'):
                 df = pd.read_excel(file_path)
             else:
                 raise ValueError("Unsupported file format. Please select a CSV or Excel file.")
 
+            # Remove the first 5 lines
+            # df = df.iloc[4:]
+
+            # print(df.iloc[:5, :3])
+            #print header row
+
+            print(df['DisplayName'])
+            print(df['Name'])
             # Separate the initial mapping rows and the log data
             name_display_mapping = df.iloc[:153, :3]  # Adjust the row count as needed
 
             log_data = pd.read_csv(file_path, skiprows=154) if file_path.endswith('.csv') else pd.read_excel(file_path, skiprows=154)
+            print("log_data", log_data.iloc[:1])
+
+            
 
             # Create a dictionary mapping from Name to DisplayName 
             mapping_dict = pd.Series(name_display_mapping['DisplayName'].values, 
@@ -82,7 +94,13 @@ class FileProcessorApp:
     def analyze_data(self, input_file_path):
         try:
             # Load the cleaned data
-            df = pd.read_excel(input_file_path)
+            if input_file_path.endswith('.csv'):
+                df = pd.read_csv(input_file_path)
+                # print(df.head())
+            elif input_file_path.endswith('.xlsx'):
+                df = pd.read_excel(input_file_path)
+            else:
+                raise ValueError("Unsupported file format. Please select a CSV or Excel file.")
 
             # Filter data based on SOC conditions
             # df = input_df[(input_df['SOC'] < 19) & (input_df['SOC'] > 2)]
@@ -116,9 +134,11 @@ class FileProcessorApp:
             filtered_data_withoutDischarge = df[(df['PackCurr'] > 0) & (df['PackCurr'] < 100)]
             regen_ah = abs((filtered_data_withoutDischarge['PackCurr'] * filtered_data_withoutDischarge['localtime_Diff']).sum()) / 3600  # Convert seconds to hours
             average_regen_current = abs(filtered_data_withoutDischarge['PackCurr'].mean())
+            Regen_watt_h = abs((filtered_data_withoutDischarge['PackCurr'] * filtered_data_withoutDischarge['PackVol'] * filtered_data_withoutDischarge['localtime_Diff']).sum()) / 3600
 
             filtered_data_withDischarge = df[(df['PackCurr'] < 0) & (df['PackCurr'] > -150)]
             average_discharge_current = abs(filtered_data_withDischarge['PackCurr'].mean())
+            Discharge_watt_h = abs((filtered_data_withDischarge['PackCurr'] * filtered_data_withDischarge['PackVol'] * filtered_data_withDischarge['localtime_Diff']).sum()) / 3600
 
             # Calculate total distance considering power cuts
             df['distance_diff'] = df['AccumulativeElapsedDist'].diff().fillna(0)
@@ -135,11 +155,14 @@ class FileProcessorApp:
                 "Average of 'ForceAtWheel' (N)": force_mean,
                 "Ampere-hours Consumed (Ah)": actual_ah,
                 "Regen Ampere-hours (Ah)": regen_ah,
+                "Discharge Energy (Wh)": Discharge_watt_h,
+                "Regen Energy (Wh)": Regen_watt_h,
                 "Average Power (W)": average_power,
                 "Peak Power (W)": peak_power,
                 "Total Watt-hours (Wh)": watt_h,
                 "Total Distance (km)": total_distance,
                 "Efficiency (Wh/km)": watt_h / total_distance,
+                "Acceleration efficiency (Wh/km)": Discharge_watt_h/total_distance,
             }
 
             # Extract folder path and file name for output
