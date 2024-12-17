@@ -467,11 +467,18 @@ class PlotApp:
 
         # Create new canvas and toolbar
         self.canvas = FigureCanvasTkAgg(self.fig, master=self.plot_frame)
+        self.canvas.draw()  # Draw the initial plot
+
+        # Pack canvas (only once)
         self.canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
+
+        # Create and pack the toolbar
         toolbar = NavigationToolbar2Tk(self.canvas, self.plot_frame)
         toolbar.update()
+        toolbar.pack(fill=tk.X)  # Pack toolbar along the x-axis
+
+        # Ensure canvas is correctly packed after the toolbar
         self.canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
-        self.canvas.draw()
 
     def update_plot(self, selected_columns, retain_zoom=False):
         # Optionally save zoom state if required
