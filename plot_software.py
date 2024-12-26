@@ -7,6 +7,7 @@ from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolb
 import numpy as np
 import mplcursors  # Import mplcursors
 from datetime import datetime, timedelta
+import mpld3
 
 # Tkinter GUI Setup
 class PlotApp:
@@ -150,6 +151,10 @@ class PlotApp:
         self.opacity_slider = tk.Scale(self.control_frame, from_=0.1, to=1.0, resolution=0.1, orient=tk.HORIZONTAL, command=self.adjust_opacity)
         self.opacity_slider.set(1.0)  # Default opacity is 100%
         self.opacity_slider.pack(pady=5)
+
+        # Button to download the graph as HTML file
+        self.download_button = tk.Button(self.control_frame, text="Download Graph as HTML", command=self.save_plot_as_html)
+        self.download_button.pack(pady=10)
 
         # To hold the extracted column names and their corresponding checkboxes
         self.column_names = []
@@ -429,6 +434,17 @@ class PlotApp:
 
         # Setup the canvas and toolbar
         self.setup_canvas_toolbar()
+
+        # Save the plot as an HTML file
+        self.save_plot_as_html()
+
+    def save_plot_as_html(self):
+        html_str = mpld3.fig_to_html(self.fig)
+        file_path = filedialog.asksaveasfilename(defaultextension=".html", filetypes=[("HTML files", "*.html")])
+        if file_path:
+            with open(file_path, 'w') as f:
+                f.write(html_str)
+            messagebox.showinfo("Save Plot", f"Plot saved as HTML file: {file_path}")
 
     def toggle_column_visibility(self, column):
         """Toggle visibility of a plot line and its associated y-axis."""
