@@ -67,7 +67,6 @@ class PlotApp:
         self.influx_frame = tk.LabelFrame(self.control_frame, text="Is data in influx?")
         self.influx_frame.pack(pady=10)
 
-
         self.influx_var = tk.StringVar(value="yes")
         self.influx_yes = tk.Radiobutton(self.influx_frame, text="Yes", variable=self.influx_var, value="yes")
         self.influx_yes.pack(side="left", padx=5)
@@ -120,25 +119,18 @@ class PlotApp:
         self.select_all_checkbox = tk.Checkbutton(self.control_frame, text="Select All", variable=self.select_all_var, command=self.toggle_select_all)
         self.select_all_checkbox.pack(pady=5)
 
-          # Search Box for Index Column Selection
+        # Search Box for Index Column Selection
         self.index_search_label = tk.Label(self.control_frame, text="Search Index Column:")
         self.index_search_label.pack(pady=5)
         self.index_search_entry = tk.Entry(self.control_frame, width=50)
         self.index_search_entry.pack(pady=5)
         self.index_search_entry.bind("<KeyRelease>", self.update_index_dropdown)
 
-
         # Dropdown for Index Column Selection
         self.index_label = tk.Label(self.control_frame, text="Select Index Column:")
         self.index_label.pack(pady=5)
         self.index_column_dropdown = ttk.Combobox(self.control_frame, state="readonly")
         self.index_column_dropdown.pack(pady=5)
-
-        # # Display Selected Columns
-        # self.selected_columns_label = tk.Label(self.control_frame, text="Selected Columns:")
-        # self.selected_columns_label.pack(pady=5)
-        # self.selected_columns_display = tk.Label(self.control_frame, text="", wraplength=400, justify="left")
-        # self.selected_columns_display.pack(pady=5)
 
         # Frame for checkboxes of selected columns
         self.selected_columns_frame = tk.Frame(self.control_frame)
@@ -148,9 +140,17 @@ class PlotApp:
         self.submit_button = tk.Button(self.control_frame, text="Submit", command=self.submit)
         self.submit_button.pack(pady=10)
 
-        
+        # Button to open a new tab
+        self.new_tab_button = tk.Button(self.control_frame, text="New Tab", command=self.open_new_tab)
+        self.new_tab_button.pack(pady=10)
 
-   
+        # Opacity Slider
+        self.opacity_label = tk.Label(self.control_frame, text="Adjust Plot Window Opacity:")
+        self.opacity_label.pack(pady=5)
+        self.opacity_slider = tk.Scale(self.control_frame, from_=0.1, to=1.0, resolution=0.1, orient=tk.HORIZONTAL, command=self.adjust_opacity)
+        self.opacity_slider.set(1.0)  # Default opacity is 100%
+        self.opacity_slider.pack(pady=5)
+
         # To hold the extracted column names and their corresponding checkboxes
         self.column_names = []
         self.checkbox_vars = {}  # To store the checkbox variables for each column
@@ -171,6 +171,18 @@ class PlotApp:
         self.plot_frame = tk.Frame(self.plot_window)
         self.plot_frame.pack(fill=tk.BOTH, expand=True)
 
+    def adjust_opacity(self, value):
+        """Adjust the opacity of the plot window."""
+        self.plot_window.attributes('-alpha', float(value))
+        
+    def open_new_tab(self):
+        print("Opening new tab")
+        new_window = tk.Toplevel(self.root)
+        new_window.title("New Tab")
+        new_app = PlotApp(new_window)
+        print("Build UI called")
+    
+    
     def browse_file(self):
         # Allow the user to select any file type
         file_paths = filedialog.askopenfilenames(filetypes=[("All files", "*.*")])
