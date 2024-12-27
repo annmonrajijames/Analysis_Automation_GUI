@@ -364,7 +364,7 @@ class PlotApp:
                 var = tk.IntVar(value=1)  # Start with the checkbox selected
                 checkbox = tk.Checkbutton(self.selected_columns_frame, text=col, variable=var)
                 checkbox.pack(anchor="w")
-                checkbox.bind("<Button-1>", lambda event, col=col: self.toggle_column_visibility(col))
+                checkbox.bind("<Button-1>", lambda _, col=col: self.toggle_column_visibility(col))
                 self.selected_checkbox_vars[col] = var  # Store the variable
 
             if not hasattr(self, 'plot_window') or not self.plot_window.winfo_exists():
@@ -381,11 +381,11 @@ class PlotApp:
                 self.plot_initialized = False
 
             # Proceed to plot the columns
-            self.plot_columns(selected_columns, selected_index_column, self.file_directory)
+            self.plot_columns(selected_columns, selected_index_column)
         else:
             messagebox.showerror("Error", "Please select columns and an index column.")
 
-    def plot_columns(self, selected_columns, index_column, file_directory):
+    def plot_columns(self, selected_columns, index_column):
         # Clear previous plots if necessary
         if hasattr(self, 'fig') and self.fig:
             plt.close(self.fig)  # Close the previous figure
@@ -430,13 +430,10 @@ class PlotApp:
         self.update_legends()
 
         # Add interactive data cursors
-        mplcursors.cursor(hover=True)
+        mplcursors.cursor(self.fig, hover=True)
 
         # Setup the canvas and toolbar
         self.setup_canvas_toolbar()
-
-        # Save the plot as an HTML file
-        self.save_plot_as_html()
 
     def save_plot_as_html(self):
         html_str = mpld3.fig_to_html(self.fig)
