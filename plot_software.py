@@ -8,10 +8,13 @@ import numpy as np
 import mplcursors  # Import mplcursors
 from datetime import datetime, timedelta
 import mpld3
+import webbrowser
+from plotly.subplots import make_subplots
+import plotly.graph_objects as go
 
 # Tkinter GUI Setup
 class PlotApp:
-    def __init__(self, root):
+    def __init__(self, root, input_file_name=None):
         self.root = root
         self.root.title("Data Plotter")
 
@@ -44,6 +47,9 @@ class PlotApp:
 
         # Main content inside the frame
         self.build_ui()
+
+        # Initialize input_file_name
+        self.input_file_name = input_file_name
 
     def _on_mousewheel(self, event):
         """Enable scrolling the entire page with mouse wheel."""
@@ -436,12 +442,89 @@ class PlotApp:
         self.setup_canvas_toolbar()
 
     def save_plot_as_html(self):
-        html_str = mpld3.fig_to_html(self.fig)
-        file_path = filedialog.asksaveasfilename(defaultextension=".html", filetypes=[("HTML files", "*.html")])
-        if file_path:
-            with open(file_path, 'w') as f:
-                f.write(html_str)
-            messagebox.showinfo("Save Plot", f"Plot saved as HTML file: {file_path}")
+        selected_columns = [col for col, var in self.checkbox_vars.items() if var.get()]
+        selected_index_column = self.index_column_dropdown.get()
+
+        if not selected_columns or not selected_index_column:
+            messagebox.showerror("Error", "Please select columns and an index column.")
+            return
+
+        save_path = filedialog.askdirectory()
+        if not save_path:
+            return
+
+        # Set the selected column as index
+        if selected_index_column in selected_columns:
+            self.data.set_index(selected_index_column, inplace=True)
+            selected_columns.remove(selected_index_column)
+        else:
+            self.data.set_index(selected_index_column, inplace=True)
+
+        # Plot using Plotly
+        fig = make_subplots(specs=[[{"secondary_y": True}]])
+
+        # Add trace for each selected column
+        for i, col in enumerate(selected_columns):
+            # Assign y-axis based on index (e.g., first column to 'y', second to 'y2', etc.)
+            axis_name = f'y{i+1}' if i < 2 else f'y{i+2}'  # Primary ('y1') and secondary ('y2') for first two, then others
+            fig.add_trace(go.Scatter(x=self.data.index, y=self.data[col], name=col), secondary_y=(i > 0))
+
+        # Add opacity modification dropdown
+        fig.update_layout(
+            title=f'Plot_{self.input_file_name}',
+            xaxis_title=selected_index_column,
+            height=1000,
+            yaxis=dict(title='Primary Y-Axis', showgrid=False),
+            yaxis2=dict(title='Secondary Y-Axis', overlaying='y', side='right', showgrid=False),  # Overlay for secondary axis
+            updatemenus=[
+                {
+                    'buttons': [
+                        {
+                            'args': [{'opacity': 0.2}],  # Low opacity
+                            'label': 'Clarity- 20%',
+                            'method': 'restyle'
+                        },
+                        {
+                            'args': [{'opacity': 0.4}],  # Medium opacity
+                            'label': '40%',
+                            'method': 'restyle'
+                        },
+                        {
+                            'args': [{'opacity': 0.6}],  # Default opacity
+                            'label': '60%',
+                            'method': 'restyle'
+                        },
+                        {
+                            'args': [{'opacity': 0.8}],  # Higher opacity
+                            'label': '80%',
+                            'method': 'restyle'
+                        },
+                        {
+                            'args': [{'opacity': 1}],  # Full opacity
+                            'label': '100%',
+                            'method': 'restyle'
+                        }
+                    ],
+                    'direction': 'down',  # Dropdown direction
+                    'showactive': True,
+                    'x': 1.05,  # X position of dropdown
+                    'xanchor': 'left',
+                    'y': 1.20,
+                    'yanchor': 'top'
+                }
+            ]
+        )
+
+        fig.update_xaxes(tickformat='%H:%M:%S')
+
+        # Save the plot as an HTML file
+        os.makedirs(save_path, exist_ok=True)
+        graph_path = os.path.join(save_path, f'Dynamic_plot_{self.input_file_name}.html')  # Updated file name
+        fig.write_html(graph_path)
+        print(f"Plot saved at: {graph_path}")
+
+        # Automatically open the saved plot in the default web browser
+        webbrowser.open('file://' + os.path.realpath(graph_path))  # Open the HTML file
 
     def toggle_column_visibility(self, column):
         """Toggle visibility of a plot line and its associated y-axis."""
