@@ -192,8 +192,61 @@ class PlotApp:
         new_window.title("New Tab")
         new_app = PlotApp(new_window)
         print("Build UI called")
-    
-    
+
+    def process_file(self, file_path):
+        try:
+            print("Processing file")
+            # Determine the file type based on the extension
+            file_extension = os.path.splitext(file_path)[1].lower()
+
+            if file_extension not in ['.xlsx', '.xls', '.csv']:
+                print(f"Skipped: {file_path} (Unsupported file type)")
+                return
+
+            # Read the first row to get the date and time from the header
+            if file_extension in ['.xlsx', '.xls']:
+                first_row = pd.read_excel(file_path, nrows=1, header=None)
+            elif file_extension == '.csv':
+                first_row = pd.read_csv(file_path, nrows=1, header=None)
+
+            if first_row.empty:
+                print(f"Skipped: {file_path} (File is empty)")
+                return
+
+            date_time = first_row.iloc[0, 0]
+            if ':' in str(date_time):
+                date_time = str(date_time).split(':', 1)[1].strip()
+
+            # Read the rest of the data, skipping the first row
+            if file_extension in ['.xlsx', '.xls']:
+                data = pd.read_excel(file_path, skiprows=1)
+            elif file_extension == '.csv':
+                data = pd.read_csv(file_path, skiprows=1)
+
+            # Check if "Time" column exists
+            if "Time" not in data.columns:
+                print(f"Skipped: {file_path} (No 'Time' column found)")
+                return
+
+            # Insert the date and time as a new column
+            data.insert(0, 'Creation Time', date_time)
+
+            # Drop the first three rows that were originally the 2nd, 3rd, and 4th rows in the file
+            if len(data) > 3:
+                data = data.drop(data.index[:3])
+
+            # Save the processed data back to the same file
+            if file_extension in ['.xlsx', '.xls']:
+                data.to_excel(file_path, index=False, engine='openpyxl')
+            elif file_extension == '.csv':
+                data.to_csv(file_path, index=False)
+
+            print(f"Processed and saved: {file_path}")
+
+        except Exception as e:
+            print(f"Error processing {file_path}: {e}")
+
+
     def browse_file(self):
         # Allow the user to select any file type
         file_paths = filedialog.askopenfilenames(filetypes=[("All files", "*.*")])
@@ -221,6 +274,7 @@ class PlotApp:
                 elif file_path.endswith('.xlsx'):
                     # Load the Excel file directly
                     self.data = pd.read_excel(file_path)
+                    print("Excel file loaded",file_path)
  
                 else:
                     raise ValueError("Unsupported file format")
@@ -237,30 +291,42 @@ class PlotApp:
                     # Handle Time conversion if present
                     print("Input data is Influx data")
 
-                
+                    self.file_directory = self.process_file(file_path)
 
-                #For converting Datetime timestamp to Time format
+
+                   
+                    if file_path.endswith('.csv'):
+                        # Load the CSV file directly
+                        self.data = pd.read_csv(file_path)
+        
+                    if file_path.endswith('.xlsx'):
+                        # Load the Excel file directly
+                        self.data = pd.read_excel(file_path)
+                        print("Excel file loaded",file_path)
+
+
+
+                    #For converting Datetime timestamp to Time format
                     if 'DATETIME' not in self.data.columns:  #if 'DATETIME' not in column Present 
+                        print("Column datas",self.data.columns)
                         print("DATETIME column not present")
                         self.data['DATETIME'] = self.data['Time']
                     
-                    else:                                                                                   #if 'DATETIME' column Present 
+                    if 'DATETIME' not in self.data.columns:
+                            print("DATETIME column not present, using Time column instead")
+                            self.data['DATETIME'] = pd.to_datetime(self.data['Time'], errors='coerce')
+                    else:
                         self.data['DATETIME'] = pd.to_numeric(self.data['DATETIME'], errors='coerce')
-                
-                        # Drop or handle NaN values
-                        self.data = self.data.dropna(subset=['DATETIME'])
-                    
-                        # Convert the Unix timestamps to datetime
+                        self.data.dropna(subset=['DATETIME'], inplace=True)
                         self.data['DATETIME'] = pd.to_datetime(self.data['DATETIME'], unit='s')
-                    
-                        # Print the converted DATETIME column
-                        # data['DATETIME'] = pd.to_datetime(data['DATETIME'])
 
-                        self.data['DATETIME'] = self.data['DATETIME'] + pd.to_timedelta('5h30m')
+                    # Adjust timezone (if needed)
+                    self.data['DATETIME'] += pd.to_timedelta('5h30m')  # Adjust timezone to IST
 
-                        print("GPS DATA AVAILABLE")
 
-                        # Store data for each file in the list
+                    print("GPS DATA AVAILABLE")
+
+                    # Store data for each file in the list
                     self.data_frames.append(self.data)
     
                     # Extract the column names
