@@ -1,5 +1,5 @@
 import tkinter as tk
-from tkinter import filedialog, ttk, messagebox
+from tkinter import Button, filedialog, ttk, messagebox
 import pandas as pd
 import os
 import matplotlib.pyplot as plt
@@ -11,6 +11,7 @@ import mpld3
 import webbrowser
 from plotly.subplots import make_subplots
 import plotly.graph_objects as go
+import matplotlib.dates as mdates
 
 # Tkinter GUI Setup
 class PlotApp:
@@ -160,6 +161,10 @@ class PlotApp:
 
         # Button to download the graph as HTML file
         self.download_button = tk.Button(self.control_frame, text="Download Graph as HTML", command=self.save_plot_as_html)
+        self.download_button.pack(pady=10)
+
+        # Button to download the graph as HTML file
+        self.download_button = tk.Button(self.control_frame, text="Download Zoomed index as CSV", command=self.download_zoomed_csv)
         self.download_button.pack(pady=10)
 
         # To hold the extracted column names and their corresponding checkboxes
@@ -457,6 +462,33 @@ class PlotApp:
         else:
             messagebox.showerror("Error", "Please select columns and an index column.")
 
+    def download_zoomed_csv(self):
+        """Exports the zoomed data to a CSV file."""
+        try:
+            if self.zoomed_data is None or self.zoomed_data.empty:
+                print("No zoomed data available to export.")
+                return
+
+            # Prompt user to save the file
+            file_path = filedialog.asksaveasfilename(
+                defaultextension=".csv",
+                filetypes=[("CSV files", "*.csv")],
+                title="Save CSV File"
+            )
+
+            if file_path:
+                # Save only the zoomed-in data
+                self.zoomed_data.to_csv(file_path, index=False)
+                print(f"CSV file saved at: {file_path}")
+            else:
+                print("File save canceled.")
+
+        except Exception as e:
+            print(f"Error while downloading zoomed data: {e}")
+
+
+
+
     def plot_columns(self, selected_columns, index_column):
         # Clear previous plots if necessary
         if hasattr(self, 'fig') and self.fig:
@@ -467,6 +499,7 @@ class PlotApp:
             self.fig, self.ax_primary = plt.subplots(figsize=(10, 6))
             self.y_axes = [self.ax_primary]  # Start with primary y-axis only
             self.lines = {}  # Dictionary to store line objects
+            self.zoomed_data = None  # Store the zoomed data
         else:
             # Clear existing lines from the axes without removing the axes
             for line in self.ax_primary.get_lines():
@@ -506,6 +539,40 @@ class PlotApp:
 
         # Setup the canvas and toolbar
         self.setup_canvas_toolbar()
+
+        # Capture zoomed values dynamically
+        def on_zoom(event):
+            """Callback to capture zoomed data."""
+            if event.name == 'draw_event':  # Triggered after a zoom or pan
+                # Get the current zoomed x-axis range
+                x_min, x_max = self.ax_primary.get_xlim()
+                x_min = mdates.num2date(x_min).replace(tzinfo=None)
+                x_max = mdates.num2date(x_max).replace(tzinfo=None)
+
+                print(f"Zoomed Range: {x_min} to {x_max}")  # Debugging output
+
+                # Collect data for all visible parameters within the zoomed range
+                zoomed_data_frames = []
+
+                for df in self.data_frames:
+                    x = pd.to_datetime(df[index_column], errors='coerce').dt.tz_localize(None)
+                    mask = (x >= x_min) & (x <= x_max)
+
+                    # Filter the DataFrame for zoomed range and only include visible parameters
+                    filtered_df = df.loc[mask, [index_column] + list(self.lines.keys())]
+
+                    if not filtered_df.empty:
+                        zoomed_data_frames.append(filtered_df)
+
+                # Combine all filtered data
+                if zoomed_data_frames:
+                    self.zoomed_data = pd.concat(zoomed_data_frames, ignore_index=True)
+                else:
+                    self.zoomed_data = pd.DataFrame()  # No zoomed data available
+
+        # Connect the zoom callback
+        self.fig.canvas.mpl_connect('draw_event', on_zoom)
+
 
     def save_plot_as_html(self):
         selected_columns = [col for col, var in self.checkbox_vars.items() if var.get()]
