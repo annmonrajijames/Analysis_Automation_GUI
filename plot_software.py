@@ -560,38 +560,26 @@ class PlotApp:
             label_y[col] = tk.Label(live_window, text=f"{col}: N/A")
             label_y[col].pack(padx=10, pady=5)
 
-        # Define the function to fetch the value and update live window
         def update_live_values(sel):
             """Update live values whenever the cursor hovers over the plot."""
             if sel.artist is not None:
-                x_val = sel.target[0]  # Get the x-value of the current cursor position
-                y_values = {}
+                # Retrieve X and Y values directly from the cursor selection
+                x_val, y_val = sel.target
 
-                # Convert x_data to numeric values if it's datetime
+                # Check if the X data is in datetime format
+                if isinstance(self.data_frames[0][index_column].iloc[0], (np.datetime64, pd.Timestamp)):
+                    # Convert numeric X value to datetime
+                    x_val = mdates.num2date(x_val).strftime('%Y-%m-%d %H:%M:%S')
+
+                # Update the X-axis label in the live window
+                label_x.config(text=f"X-axis value: {x_val}")
+
+                # Find which column corresponds to the Y value
                 for col, line in self.lines.items():
-                    y_data = line.get_ydata()
-                    x_data = line.get_xdata()
-
-                    # If x_data is datetime, convert it to numeric using date2num
-                    if isinstance(x_data[0], (np.datetime64, pd.Timestamp)):
-                        x_data = mdates.date2num(x_data)
-
-                    # Find the closest x-value in x_data to x_val
-                    closest_idx = np.argmin(np.abs(x_data - x_val))
-                    closest_x = x_data[closest_idx]
-                    y_val = y_data[closest_idx]  # Get the corresponding y-value
-
-                    # Check if the x_data is in datetime format and convert it to datetime string
-                    if isinstance(self.data_frames[0][index_column].iloc[0], (np.datetime64, pd.Timestamp)):
-                        closest_x = mdates.num2date(closest_x)  # Convert number to datetime object
-                        closest_x = closest_x.strftime('%Y-%m-%d %H:%M:%S')  # Format time as string
-
-                    y_values[col] = y_val
-
-                # Update the Tkinter window with the new values
-                label_x.config(text=f"X-axis value: {closest_x}")  # Display the formatted X value
-                for col, y_val in y_values.items():
-                    label_y[col].config(text=f"{col}: {y_val:.2f}")  # Update Y values in live window
+                    if line == sel.artist:  # Match the selected artist (line) with the column
+                        # Update the corresponding Y-axis label in the live window
+                        label_y[col].config(text=f"{col}: {y_val:.2f}")
+                        break
 
         # Connect the update function to the cursor hover event
         cursor.connect("add", update_live_values)
