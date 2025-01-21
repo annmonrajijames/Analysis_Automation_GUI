@@ -486,9 +486,6 @@ class PlotApp:
         except Exception as e:
             print(f"Error while downloading zoomed data: {e}")
 
-
-
-
     def plot_columns(self, selected_columns, index_column):
         # Clear previous plots if necessary
         if hasattr(self, 'fig') and self.fig:
@@ -499,7 +496,6 @@ class PlotApp:
             self.fig, self.ax_primary = plt.subplots(figsize=(10, 6))
             self.y_axes = [self.ax_primary]  # Start with primary y-axis only
             self.lines = {}  # Dictionary to store line objects
-            self.zoomed_data = None  # Store the zoomed data
         else:
             # Clear existing lines from the axes without removing the axes
             for line in self.ax_primary.get_lines():
@@ -511,6 +507,14 @@ class PlotApp:
         # Plot each selected column
         for i, col in enumerate(selected_columns):
             for df in self.data_frames:
+                # Check if the DataFrame is empty or if the column doesn't exist
+                if df.empty:
+                    print(f"Warning: DataFrame is empty for column: {col}")
+                    continue
+                if index_column not in df.columns:
+                    print(f"Warning: Column '{index_column}' not found in DataFrame")
+                    continue
+
                 x = df[index_column]
                 y = df[col]
 
@@ -531,12 +535,67 @@ class PlotApp:
         self.ax_primary.set_xlabel(index_column)
         self.ax_primary.set_title("Data Plot")
 
+        # Set the X-axis format to Date and Time
+        if isinstance(self.data_frames[0][index_column].iloc[0], (np.datetime64, pd.Timestamp)):
+            self.ax_primary.xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m-%d %H:%M:%S'))
+            self.ax_primary.xaxis.set_major_locator(mdates.AutoDateLocator())  # Automatically decide the date ticks
+            self.fig.autofmt_xdate()  # Format the X-axis dates nicely
+
         # Update legends
         self.update_legends()
 
-        # Add interactive data cursors
-        mplcursors.cursor(self.fig, hover=True)
+        # Add interactive data cursors (continuous mode)
+        cursor = mplcursors.cursor(self.fig, hover=True)
 
+        # Create the Tkinter window for displaying live values
+        live_window = tk.Toplevel(self.root)
+        live_window.title("Live Cursor Data")
+        live_window.geometry("300x200")
+
+        label_x = tk.Label(live_window, text="X-axis value: N/A")
+        label_x.pack(padx=10, pady=5)
+
+        label_y = {}
+        for col in selected_columns:
+            label_y[col] = tk.Label(live_window, text=f"{col}: N/A")
+            label_y[col].pack(padx=10, pady=5)
+
+        # Define the function to fetch the value and update live window
+        def update_live_values(sel):
+            """Update live values whenever the cursor hovers over the plot."""
+            if sel.artist is not None:
+                x_val = sel.target[0]  # Get the x-value of the current cursor position
+                y_values = {}
+
+                # Convert x_data to numeric values if it's datetime
+                for col, line in self.lines.items():
+                    y_data = line.get_ydata()
+                    x_data = line.get_xdata()
+
+                    # If x_data is datetime, convert it to numeric using date2num
+                    if isinstance(x_data[0], (np.datetime64, pd.Timestamp)):
+                        x_data = mdates.date2num(x_data)
+
+                    # Find the closest x-value in x_data to x_val
+                    closest_idx = np.argmin(np.abs(x_data - x_val))
+                    closest_x = x_data[closest_idx]
+                    y_val = y_data[closest_idx]  # Get the corresponding y-value
+
+                    # Check if the x_data is in datetime format and convert it to datetime string
+                    if isinstance(self.data_frames[0][index_column].iloc[0], (np.datetime64, pd.Timestamp)):
+                        closest_x = mdates.num2date(closest_x)  # Convert number to datetime object
+                        closest_x = closest_x.strftime('%Y-%m-%d %H:%M:%S')  # Format time as string
+
+                    y_values[col] = y_val
+
+                # Update the Tkinter window with the new values
+                label_x.config(text=f"X-axis value: {closest_x}")  # Display the formatted X value
+                for col, y_val in y_values.items():
+                    label_y[col].config(text=f"{col}: {y_val:.2f}")  # Update Y values in live window
+
+        # Connect the update function to the cursor hover event
+        cursor.connect("add", update_live_values)
+        
         # Setup the canvas and toolbar
         self.setup_canvas_toolbar()
 
