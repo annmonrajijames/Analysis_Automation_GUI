@@ -18,6 +18,7 @@ class PlotApp:
     def __init__(self, root, input_file_name=None):
         self.root = root
         self.root.title("Data Plotter")
+        self.root.geometry("400x865+0+0")  # Open the main window in the top-left corner (left corner)
 
         # Initialize selected_checkbox_vars
         self.selected_checkbox_vars = {}  # This stores the variables associated with the checkboxes for selected columns
@@ -183,7 +184,8 @@ class PlotApp:
         # Create a separate window for plotting
         self.plot_window = tk.Toplevel(self.root)
         self.plot_window.title("Data Plot")
-        self.plot_window.geometry("800x600")  # Set the window size for the plot
+        screen_width = self.root.winfo_screenwidth()  # Get the screen width
+        self.plot_window.geometry(f"900x864+{screen_width - 900}+0")  # Open the plot window in the top-right corner
         self.plot_frame = tk.Frame(self.plot_window)
         self.plot_frame.pack(fill=tk.BOTH, expand=True)
 
