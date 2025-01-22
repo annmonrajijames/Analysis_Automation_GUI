@@ -589,6 +589,11 @@ class PlotApp:
         # Setup the canvas and toolbar
         self.setup_canvas_toolbar()
 
+        # Call the function to log visible limits on zoom/pan
+        self.update_limits()  # This works without the 'event' argument
+
+        self.setup_zoom_and_pan()
+
         # Capture zoomed values dynamically
         def on_zoom(event):
             """Callback to capture zoomed data."""
@@ -621,6 +626,70 @@ class PlotApp:
 
         # Connect the zoom callback
         self.fig.canvas.mpl_connect('draw_event', on_zoom)
+
+
+    def update_limits(self, event=None):
+        """
+        Detect and log the minimum and maximum values of both the x-axis and y-axis
+        whenever the plot is zoomed or panned, or when called manually (without event).
+        """
+        # Get the current x-axis and y-axis limits after zooming or panning
+        x_min, x_max = self.ax_primary.get_xlim()  # X-axis limits after zoom
+        y_min, y_max = self.ax_primary.get_ylim()  # Y-axis limits after zoom
+
+        # Check if x-axis is datetime
+        is_datetime = isinstance(self.data_frames[0][self.index_column_dropdown.get()].iloc[0], (np.datetime64, pd.Timestamp))
+
+        if is_datetime:
+            # Convert x-axis limits to offset-naive datetime objects
+            x_min = mdates.num2date(x_min).replace(tzinfo=None)
+            x_max = mdates.num2date(x_max).replace(tzinfo=None)
+            print(f"Visible X-axis range: {x_min} to {x_max}")
+        else:
+            print(f"Visible X-axis range: {x_min:.2f} to {x_max:.2f}")
+        
+        # Now, iterate over each line to find the visible data ranges and calculate new y_min and y_max
+        for col, line in self.lines.items():
+            x_data = line.get_xdata()
+            y_data = line.get_ydata()
+
+            if is_datetime:
+                # Convert x_data to offset-naive datetime objects for comparison
+                if np.issubdtype(x_data.dtype, np.datetime64):
+                    x_data = pd.to_datetime(x_data).tz_localize(None)
+                else:
+                    x_data = [date.replace(tzinfo=None) for date in mdates.num2date(x_data)]
+
+            # Filter data within the current visible x-axis range
+            visible_data = [(x, y) for x, y in zip(x_data, y_data) if x_min <= x <= x_max]
+
+            # If there is visible data, calculate the new y_min and y_max for the visible range
+            if visible_data:
+                visible_y = [y for _, y in visible_data]
+                min_val = min(visible_y)
+                max_val = max(visible_y)
+
+                # Optionally, print or log the min and max of the visible range
+                print(f"Parameter '{col}': Min = {min_val:.2f}, Max = {max_val:.2f}")
+            else:
+                print(f"Parameter '{col}': No visible data in the current range.")
+
+        # You can also log the global y_min and y_max (based on visible data)
+        print(f"Global Y-axis range: {y_min:.2f} to {y_max:.2f}")
+
+
+    # Assume self is a reference to your class that contains the plot and data
+    def setup_zoom_and_pan(self):
+        """
+        Set up zoom and pan event handling.
+        This will call update_limits on each zoom or pan action.
+        """
+        # Bind the 'motion_notify_event' and 'axes_zoom_event' to trigger update_limits
+        self.fig.canvas.mpl_connect('scroll_event', self.update_limits)  # Scroll to zoom
+        self.fig.canvas.mpl_connect('button_press_event', self.update_limits)  # Mouse drag for pan
+        self.fig.canvas.mpl_connect('motion_notify_event', self.update_limits)  # Mouse movement for pan
+        self.fig.canvas.mpl_connect('axes_enter_event', self.update_limits)  # When an axis is selected
+
 
 
     def save_plot_as_html(self):
