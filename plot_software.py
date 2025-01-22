@@ -552,7 +552,7 @@ class PlotApp:
         # Create the Tkinter window for displaying live values
         live_window = tk.Toplevel(self.root)
         live_window.title("Live Cursor Data")
-        live_window.geometry("300x200")
+        live_window.geometry("300x250")  # Adjusted size to fit additional label
 
         label_x = tk.Label(live_window, text="X-axis value: N/A")
         label_x.pack(padx=10, pady=5)
@@ -561,6 +561,14 @@ class PlotApp:
         for col in selected_columns:
             label_y[col] = tk.Label(live_window, text=f"{col}: N/A")
             label_y[col].pack(padx=10, pady=5)
+
+        # Add label for global Y-axis range
+        label_global_y = tk.Label(live_window, text="Global Y-axis range: N/A")
+        label_global_y.pack(padx=10, pady=10)
+
+        # Add label for Y-axis average
+        label_y_avg = tk.Label(live_window, text="Y-axis average: N/A")
+        label_y_avg.pack(padx=10, pady=10)
 
         def update_live_values(sel):
             """Update live values whenever the cursor hovers over the plot."""
@@ -583,16 +591,26 @@ class PlotApp:
                         label_y[col].config(text=f"{col}: {y_val:.2f}")
                         break
 
+            # Update the global Y-axis range in the UI
+            y_min, y_max = self.ax_primary.get_ylim()
+            label_global_y.config(text=f"Minimum: {y_min:.2f} Maximum: {y_max:.2f}")
+
+            # Calculate the average of the Y-axis range
+            y_avg = (y_min + y_max) / 2
+            label_y_avg.config(text=f"Y-axis average: {y_avg:.2f}")
+
         # Connect the update function to the cursor hover event
         cursor.connect("add", update_live_values)
-        
+
         # Setup the canvas and toolbar
         self.setup_canvas_toolbar()
 
         # Call the function to log visible limits on zoom/pan
         self.update_limits()  # This works without the 'event' argument
 
+        # Setup zoom and pan interaction
         self.setup_zoom_and_pan()
+
 
         # Capture zoomed values dynamically
         def on_zoom(event):
