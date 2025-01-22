@@ -18,7 +18,6 @@ class PlotApp:
     def __init__(self, root, input_file_name=None):
         self.root = root
         self.root.title("Data Plotter")
-        self.root.geometry("400x865+0+0")  # Open the main window in the top-left corner (left corner)
 
         # Initialize selected_checkbox_vars
         self.selected_checkbox_vars = {}  # This stores the variables associated with the checkboxes for selected columns
@@ -184,8 +183,7 @@ class PlotApp:
         # Create a separate window for plotting
         self.plot_window = tk.Toplevel(self.root)
         self.plot_window.title("Data Plot")
-        screen_width = self.root.winfo_screenwidth()  # Get the screen width
-        self.plot_window.geometry(f"900x864+{screen_width - 900}+0")  # Open the plot window in the top-right corner
+        self.plot_window.geometry("800x600")  # Set the window size for the plot
         self.plot_frame = tk.Frame(self.plot_window)
         self.plot_frame.pack(fill=tk.BOTH, expand=True)
 
@@ -493,18 +491,10 @@ class PlotApp:
         if hasattr(self, 'fig') and self.fig:
             plt.close(self.fig)  # Close the previous figure
 
-        # Create a new figure and primary axis if not already initialized
-        if self.fig is None:
-            self.fig, self.ax_primary = plt.subplots(figsize=(10, 6))
-            self.y_axes = [self.ax_primary]  # Start with primary y-axis only
-            self.lines = {}  # Dictionary to store line objects
-        else:
-            # Clear existing lines from the axes without removing the axes
-            for line in self.ax_primary.get_lines():
-                line.remove()
-            for ax in self.y_axes[1:]:
-                for line in ax.get_lines():
-                    line.remove()
+        # Create a new figure and primary axis
+        self.fig, self.ax_primary = plt.subplots(figsize=(10, 6))
+        self.y_axes = [self.ax_primary]  # Start with primary y-axis only
+        self.lines = {}  # Dictionary to store line objects
 
         # Plot each selected column
         for i, col in enumerate(selected_columns):
@@ -513,12 +503,23 @@ class PlotApp:
                 if df.empty:
                     print(f"Warning: DataFrame is empty for column: {col}")
                     continue
-                if index_column not in df.columns:
-                    print(f"Warning: Column '{index_column}' not found in DataFrame")
+                if index_column not in df.columns or col not in df.columns:
+                    print(f"Warning: Column '{index_column}' or '{col}' not found in DataFrame")
                     continue
 
-                x = df[index_column]
-                y = df[col]
+                # Extract x and y values
+                x = df[index_column].values
+                y = df[col].values
+
+                # Debugging: Print x and y values
+                print(f"Plotting column: {col}")
+                print(f"x: {x[:5]}")  # Show first 5 x values
+                print(f"y: {y[:5]}")  # Show first 5 y values
+
+                # Skip if x or y is empty
+                if len(x) == 0 or len(y) == 0:
+                    print(f"No data to plot for column: {col}")
+                    continue
 
                 # Add new secondary axis if needed
                 if i > 0:
@@ -529,9 +530,14 @@ class PlotApp:
                 else:
                     ax = self.ax_primary
 
+                # Plot data
                 line, = ax.plot(x, y, label=col, color=plt.cm.viridis(i / len(selected_columns)))
                 ax.set_ylabel(f"{col} Values")
                 self.lines[col] = line  # Store the line object
+
+                # Adjust limits dynamically
+                ax.relim()  # Recompute the limits based on the data
+                ax.autoscale_view()  # Autoscale to fit the data
 
         # Set x-axis label and title
         self.ax_primary.set_xlabel(index_column)
@@ -549,10 +555,25 @@ class PlotApp:
         # Add interactive data cursors (continuous mode)
         cursor = mplcursors.cursor(self.fig, hover=True)
 
-        # Create the Tkinter window for displaying live values
+        # Create a vertical line for live tracking at the first x-axis limit
+        initial_x = None
+        for df in self.data_frames:
+            if not df.empty and index_column in df.columns:
+                initial_x = df[index_column].values[0]
+                break  # Use the first valid x-value
+
+        if initial_x is not None:
+            self.vertical_line = self.ax_primary.axvline(x=initial_x, color='red', linestyle='--', linewidth=1)
+        else:
+            self.vertical_line = self.ax_primary.axvline(x=0, color='red', linestyle='--', linewidth=1)  # Fallback
+
+        # Debugging: Print the initial x-value
+        print(f"Initial vertical line position: {initial_x if initial_x is not None else 0}")
+
+        # Tkinter window for displaying live values
         live_window = tk.Toplevel(self.root)
         live_window.title("Live Cursor Data")
-        live_window.geometry("300x250")  # Adjusted size to fit additional label
+        live_window.geometry("300x200")
 
         label_x = tk.Label(live_window, text="X-axis value: N/A")
         label_x.pack(padx=10, pady=5)
@@ -562,55 +583,53 @@ class PlotApp:
             label_y[col] = tk.Label(live_window, text=f"{col}: N/A")
             label_y[col].pack(padx=10, pady=5)
 
-        # Add label for global Y-axis range
-        label_global_y = tk.Label(live_window, text="Global Y-axis range: N/A")
-        label_global_y.pack(padx=10, pady=10)
-
-        # Add label for Y-axis average
-        label_y_avg = tk.Label(live_window, text="Y-axis average: N/A")
-        label_y_avg.pack(padx=10, pady=10)
-
         def update_live_values(sel):
             """Update live values whenever the cursor hovers over the plot."""
             if sel.artist is not None:
-                # Retrieve X and Y values directly from the cursor selection
-                x_val, y_val = sel.target
+                # Retrieve X value directly from the cursor selection
+                x_val, _ = sel.target
 
-                # Check if the X data is in datetime format
-                if isinstance(self.data_frames[0][index_column].iloc[0], (np.datetime64, pd.Timestamp)):
-                    # Convert numeric X value to datetime
+                # Update vertical line position
+                self.vertical_line.set_xdata([x_val, x_val])  # Update only x data of the vertical line
+
+                # Initialize label for X-axis
+                x_label_text = f"X-axis value: {x_val}"
+
+                # Check if X data is datetime
+                x_data = sel.artist.get_xdata()
+                if np.issubdtype(x_data.dtype, np.datetime64):
+                    # Convert x_data to Matplotlib's numeric date format for comparison
+                    numeric_x_data = mdates.date2num(x_data)
+                    closest_index = np.argmin(np.abs(numeric_x_data - x_val))
+
+                    # Convert x_val to readable datetime format
                     x_val = mdates.num2date(x_val).strftime('%Y-%m-%d %H:%M:%S')
+                    x_label_text = f"X-axis value: {x_val}"
+                else:
+                    # For non-datetime X values
+                    closest_index = np.argmin(np.abs(x_data - x_val))
 
                 # Update the X-axis label in the live window
-                label_x.config(text=f"X-axis value: {x_val}")
+                label_x.config(text=x_label_text)
 
-                # Find which column corresponds to the Y value
+                # Update all Y-axis values for the given X position
                 for col, line in self.lines.items():
-                    if line == sel.artist:  # Match the selected artist (line) with the column
-                        # Update the corresponding Y-axis label in the live window
-                        label_y[col].config(text=f"{col}: {y_val:.2f}")
-                        break
+                    # Extract the Y data for the current line
+                    y_data = line.get_ydata()
 
-            # Update the global Y-axis range in the UI
-            y_min, y_max = self.ax_primary.get_ylim()
-            label_global_y.config(text=f"Minimum: {y_min:.2f} Maximum: {y_max:.2f}")
+                    # Retrieve the Y value at the closest X index
+                    y_val = y_data[closest_index]
 
-            # Calculate the average of the Y-axis range
-            y_avg = (y_min + y_max) / 2
-            label_y_avg.config(text=f"Y-axis average: {y_avg:.2f}")
+                    # Update the Y-axis label with the parameter name and value
+                    label_y[col].config(text=f"{col}: {y_val:.2f}")
 
-        # Connect the update function to the cursor hover event
+                # Redraw the plot to reflect the updated vertical line
+                self.fig.canvas.draw_idle()
+
         cursor.connect("add", update_live_values)
 
-        # Setup the canvas and toolbar
+        # Show the plot
         self.setup_canvas_toolbar()
-
-        # Call the function to log visible limits on zoom/pan
-        self.update_limits()  # This works without the 'event' argument
-
-        # Setup zoom and pan interaction
-        self.setup_zoom_and_pan()
-
 
         # Capture zoomed values dynamically
         def on_zoom(event):
@@ -644,69 +663,6 @@ class PlotApp:
 
         # Connect the zoom callback
         self.fig.canvas.mpl_connect('draw_event', on_zoom)
-
-
-    def update_limits(self, event=None):
-        """
-        Detect and log the minimum and maximum values of both the x-axis and y-axis
-        whenever the plot is zoomed or panned, or when called manually (without event).
-        """
-        # Get the current x-axis and y-axis limits after zooming or panning
-        x_min, x_max = self.ax_primary.get_xlim()  # X-axis limits after zoom
-        y_min, y_max = self.ax_primary.get_ylim()  # Y-axis limits after zoom
-
-        # Check if x-axis is datetime
-        is_datetime = isinstance(self.data_frames[0][self.index_column_dropdown.get()].iloc[0], (np.datetime64, pd.Timestamp))
-
-        if is_datetime:
-            # Convert x-axis limits to offset-naive datetime objects
-            x_min = mdates.num2date(x_min).replace(tzinfo=None)
-            x_max = mdates.num2date(x_max).replace(tzinfo=None)
-            print(f"Visible X-axis range: {x_min} to {x_max}")
-        else:
-            print(f"Visible X-axis range: {x_min:.2f} to {x_max:.2f}")
-        
-        # Now, iterate over each line to find the visible data ranges and calculate new y_min and y_max
-        for col, line in self.lines.items():
-            x_data = line.get_xdata()
-            y_data = line.get_ydata()
-
-            if is_datetime:
-                # Convert x_data to offset-naive datetime objects for comparison
-                if np.issubdtype(x_data.dtype, np.datetime64):
-                    x_data = pd.to_datetime(x_data).tz_localize(None)
-                else:
-                    x_data = [date.replace(tzinfo=None) for date in mdates.num2date(x_data)]
-
-            # Filter data within the current visible x-axis range
-            visible_data = [(x, y) for x, y in zip(x_data, y_data) if x_min <= x <= x_max]
-
-            # If there is visible data, calculate the new y_min and y_max for the visible range
-            if visible_data:
-                visible_y = [y for _, y in visible_data]
-                min_val = min(visible_y)
-                max_val = max(visible_y)
-
-                # Optionally, print or log the min and max of the visible range
-                print(f"Parameter '{col}': Min = {min_val:.2f}, Max = {max_val:.2f}")
-            else:
-                print(f"Parameter '{col}': No visible data in the current range.")
-
-        # You can also log the global y_min and y_max (based on visible data)
-        print(f"Global Y-axis range: {y_min:.2f} to {y_max:.2f}")
-
-
-    # Assume self is a reference to your class that contains the plot and data
-    def setup_zoom_and_pan(self):
-        """
-        Set up zoom and pan event handling.
-        This will call update_limits on each zoom or pan action.
-        """
-        # Bind the 'motion_notify_event' and 'axes_zoom_event' to trigger update_limits
-        self.fig.canvas.mpl_connect('scroll_event', self.update_limits)  # Scroll to zoom
-        self.fig.canvas.mpl_connect('button_press_event', self.update_limits)  # Mouse drag for pan
-        self.fig.canvas.mpl_connect('motion_notify_event', self.update_limits)  # Mouse movement for pan
-        self.fig.canvas.mpl_connect('axes_enter_event', self.update_limits)  # When an axis is selected
 
 
 
