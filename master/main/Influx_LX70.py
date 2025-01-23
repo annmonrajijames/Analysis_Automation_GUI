@@ -356,6 +356,10 @@ def Influx_LX70_input(input_folder_path):
 
         total_distance_with_RPM = 0
 
+        # Define SOC ranges
+        soc_ranges = [(1, 10), (10, 20), (20, 30), (30, 40), (40, 50), (50, 60), (60, 70), (70, 80), (80, 90), (90, 100)]
+        soc_column = 'SOC [SA: 08]'
+
         for index, row in data.iterrows():
             if row['MotorSpeed [SA: 02]'] > 0:
 
@@ -366,9 +370,34 @@ def Influx_LX70_input(input_folder_path):
         total_distance_with_RPM = total_distance_with_RPM/1000
                 
         # print("Distance With RPM---------------------->",total_distance_with_RPM/1000)
-    #################
+    
+    # Function to calculate distance based on RPM
+        def calculate_distance(df):
+            total_distance_with_RPM = 0
+            for index, row in df.iterrows():
+                if row['MotorSpeed [SA: 02]'] > 0:
+                    distance_interval = row['Speed_ms'] * row['localtime_Diff']
+                    total_distance_with_RPM += distance_interval
+            return total_distance_with_RPM / 1000
+        
+        # Calculate distance for each SOC range
+        distances = []
+        for soc_range in soc_ranges:
+            soc_df = data[(data[soc_column] >= soc_range[0]) & (data[soc_column] < soc_range[1])]
+            distance = calculate_distance(soc_df)
+            distances.append(distance)
 
-    #
+        # Plot the results
+        soc_labels = [f'{start}-{end}' for start, end in soc_ranges]
+        plt.bar(soc_labels, distances)
+        plt.xlabel('SOC Range')
+        plt.ylabel('Distance (km)')
+        plt.title('Distance covered based on SOC ranges')
+        for i, v in enumerate(distances):
+            plt.text(i, v + 0.1, f'{v:.2f}', ha='center')
+        file_plot = f"{subfolder_path}/SOC_based_distance_covered.png"
+        plt.savefig(file_plot)
+        plt.show()
 
         if 'GROUND_DISTANCE' in data.columns:
         ###########Calculating the Distance based on Ground Distance from GPS Module data
