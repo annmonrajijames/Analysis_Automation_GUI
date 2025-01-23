@@ -148,6 +148,36 @@ class PlotApp:
         self.submit_button = tk.Button(self.control_frame, text="Submit", command=self.submit)
         self.submit_button.pack(pady=10)
 
+        # Add labels for first and last x-axis values
+        self.x_axis_limits_frame = tk.Frame(self.control_frame)
+        self.x_axis_limits_frame.pack(pady=10)
+
+        self.first_x_label = tk.Label(self.x_axis_limits_frame, text="First X-axis Value: Not Loaded")
+        self.first_x_label.pack(pady=5)
+
+        self.last_x_label = tk.Label(self.x_axis_limits_frame, text="Last X-axis Value: Not Loaded")
+        self.last_x_label.pack(pady=5)
+
+        # Add input fields for custom x-axis range
+        self.custom_x_axis_frame = tk.Frame(self.control_frame)
+        self.custom_x_axis_frame.pack(pady=10)
+
+        self.custom_x_label = tk.Label(self.custom_x_axis_frame, text="Set Custom X-Axis Range:")
+        self.custom_x_label.pack(pady=5)
+
+        self.custom_x_min_label = tk.Label(self.custom_x_axis_frame, text="Start Value:")
+        self.custom_x_min_label.pack(pady=2)
+        self.custom_x_min_entry = tk.Entry(self.custom_x_axis_frame, width=20)
+        self.custom_x_min_entry.pack(pady=2)
+
+        self.custom_x_max_label = tk.Label(self.custom_x_axis_frame, text="End Value:")
+        self.custom_x_max_label.pack(pady=2)
+        self.custom_x_max_entry = tk.Entry(self.custom_x_axis_frame, width=20)
+        self.custom_x_max_entry.pack(pady=2)
+
+        self.set_x_axis_button = tk.Button(self.custom_x_axis_frame, text="Apply X-Axis Range", command=self.apply_custom_x_axis)
+        self.set_x_axis_button.pack(pady=5)
+
         # Button to open a new tab
         self.new_tab_button = tk.Button(self.control_frame, text="New Tab", command=self.open_new_tab)
         self.new_tab_button.pack(pady=10)
@@ -369,12 +399,96 @@ class PlotApp:
                 
 
                 # filtered_index_columns = [col for col in self.column_names if col.lower() in ['datetime']]
- 
-                
- 
+
+                # Fetch and print the first and last values of the x-axis (DATETIME or Time)
+                x_column = 'DATETIME' if 'DATETIME' in self.data.columns else 'Time' if 'Time' in self.data.columns else None
+                if x_column:
+                    first_value = self.data[x_column].iloc[0]
+                    last_value = self.data[x_column].iloc[-1]
+                    # Update labels in the UI
+                    self.first_x_label.config(text=f"First X-axis Value: {first_value}")
+                    self.last_x_label.config(text=f"Last X-axis Value: {last_value}")
+                else:
+                    print("No valid x-axis column found.")
+
                 print("Columns available for plotting:", self.column_names)
             except Exception as e:
                 print(f"Error loading data: {e}")
+
+    def apply_custom_x_axis(self):
+        try:
+            # Get custom x-axis values from the user
+            custom_min = self.custom_x_min_entry.get()
+            custom_max = self.custom_x_max_entry.get()
+
+            print(f"Custom X-axis range: {custom_min} to {custom_max}")
+
+            # Ensure the values are not empty
+            if not custom_min or not custom_max:
+                raise ValueError("Both start and end values must be provided.")
+
+            # Convert to the appropriate data type (e.g., datetime or numeric)
+            x_axis_column = 'DATETIME' if 'DATETIME' in self.data.columns else None
+            if x_axis_column:
+                # If x-axis is datetime, convert to datetime objects
+                try:
+                    custom_min = pd.to_datetime(custom_min)
+                    custom_max = pd.to_datetime(custom_max)
+                except ValueError:
+                    print("Invalid date format. Please provide dates in a valid format.")
+                    return
+                print("X-axis is datetime")
+            else:  # Otherwise, treat them as numeric values
+                try:
+                    custom_min = float(custom_min)
+                    custom_max = float(custom_max)
+                except ValueError:
+                    print("Invalid numeric input. Please enter valid numbers.")
+                    return
+                print("X-axis is not datetime")
+
+            # Validate range
+            first_x = self.data[x_axis_column].iloc[0]
+            last_x = self.data[x_axis_column].iloc[-1]
+            print(f"First and Last X-axis value: {first_x} , {last_x}")
+            if custom_min < first_x or custom_max > last_x:
+                print(f"Custom range must be within the first and last x-axis values.")
+                raise ValueError("Custom range must be within the first and last x-axis values.")
+
+            # Filter data to include only rows within the custom x-axis range
+            filtered_data = self.data[(self.data[x_axis_column] >= custom_min) & (self.data[x_axis_column] <= custom_max)]
+            print(f"Filtered data shape: {filtered_data.shape}")
+
+            # Check if self.ax_primary is initialized
+            if self.ax_primary is None:
+                raise ValueError("Plot axis (self.ax_primary) is not initialized.")
+
+            # Retrieve currently visible lines from the plot
+            visible_lines = [line.get_label() for line in self.ax_primary.get_lines()]
+            print(f"Currently visible lines: {visible_lines}")
+
+            # Clear the previous plot and update with only the visible data
+            self.ax_primary.clear()  # Clear the plot
+            print("Plot cleared")
+
+            # Plot only the visible columns
+            for col in visible_lines:
+                if col in filtered_data.columns and col != x_axis_column:  # Ensure the column is valid
+                    self.ax_primary.plot(filtered_data[x_axis_column], filtered_data[col], label=col)
+
+            # Set the new X-axis limits based on the custom range
+            self.ax_primary.set_xlim(custom_min, custom_max)
+            print("X-axis limits updated")
+
+            # Add legend and refresh the plot
+            self.ax_primary.legend(loc='best')
+            self.fig.canvas.draw_idle()
+            print("Plot updated")
+
+            print(f"X-axis range updated: {custom_min} to {custom_max}")
+        except Exception as e:
+            print(f"Error applying custom x-axis range: {e}")
+
 
     def toggle_select_all(self):
         """Toggle all checkboxes that are currently visible (filtered)."""
@@ -486,10 +600,14 @@ class PlotApp:
         except Exception as e:
             print(f"Error while downloading zoomed data: {e}")
 
-    def plot_columns(self, selected_columns, index_column):
-        # Clear previous plots if necessary
-        if hasattr(self, 'fig') and self.fig:
-            plt.close(self.fig)  # Close the previous figure
+    def plot_columns(self, selected_columns, index_column, custom_x_min=None, custom_x_max=None):
+        # Ensure the figure and axes are initialized
+        if not hasattr(self, 'fig') or self.fig is None:
+            self.fig, self.ax_primary = plt.subplots(figsize=(10, 6))
+        elif self.ax_primary is None:
+            self.ax_primary = self.fig.add_subplot(111)
+        else:
+            self.ax_primary.clear()  # Safely clear the previous plot
 
         # Create a new figure and primary axis
         self.fig, self.ax_primary = plt.subplots(figsize=(10, 6))
@@ -499,6 +617,12 @@ class PlotApp:
         # Plot each selected column
         for i, col in enumerate(selected_columns):
             for df in self.data_frames:
+
+                x = pd.to_datetime(df[index_column], errors='coerce').dt.tz_localize(None)
+                y = df[col]
+
+                
+
                 # Check if the DataFrame is empty or if the column doesn't exist
                 if df.empty:
                     print(f"Warning: DataFrame is empty for column: {col}")
@@ -507,9 +631,10 @@ class PlotApp:
                     print(f"Warning: Column '{index_column}' or '{col}' not found in DataFrame")
                     continue
 
-                # Extract x and y values
-                x = df[index_column].values
-                y = df[col].values
+                # Apply custom x-axis range
+                if custom_x_min is not None and custom_x_max is not None:
+                    mask = (x >= pd.to_datetime(custom_x_min)) & (x <= pd.to_datetime(custom_x_max))
+                    x, y = x[mask], y[mask]
 
                 # Debugging: Print x and y values
                 print(f"Plotting column: {col}")
@@ -543,8 +668,12 @@ class PlotApp:
         self.ax_primary.set_xlabel(index_column)
         self.ax_primary.set_title("Data Plot")
 
+        # If custom x-axis limits are given, apply them
+        if custom_x_min is not None and custom_x_max is not None:
+            self.ax_primary.set_xlim(custom_x_min, custom_x_max)
+
         # Set the X-axis format to Date and Time
-        if isinstance(self.data_frames[0][index_column].iloc[0], (np.datetime64, pd.Timestamp)):
+        elif isinstance(self.data_frames[0][index_column].iloc[0], (np.datetime64, pd.Timestamp)):
             self.ax_primary.xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m-%d %H:%M:%S'))
             self.ax_primary.xaxis.set_major_locator(mdates.AutoDateLocator())  # Automatically decide the date ticks
             self.fig.autofmt_xdate()  # Format the X-axis dates nicely
@@ -663,8 +792,6 @@ class PlotApp:
 
         # Connect the zoom callback
         self.fig.canvas.mpl_connect('draw_event', on_zoom)
-
-
 
     def save_plot_as_html(self):
         selected_columns = [col for col, var in self.checkbox_vars.items() if var.get()]
