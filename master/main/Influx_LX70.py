@@ -380,12 +380,20 @@ def Influx_LX70_input(input_folder_path):
                     total_distance_with_RPM += distance_interval
             return total_distance_with_RPM / 1000
         
+        # Function to calculate Watt-hours
+        def calculate_watt_hours(df):
+            watt_h = abs((df['PackCurr [SA: 06]'] * df['PackVol [SA: 06]'] * df['localtime_Diff']).sum()) / 3600
+            return watt_h
+        
         # Calculate distance for each SOC range
         distances = []
+        watt_hours = []
         for soc_range in soc_ranges:
             soc_df = data[(data[soc_column] >= soc_range[0]) & (data[soc_column] < soc_range[1])]
             distance = calculate_distance(soc_df)
             distances.append(distance)
+            watt_h = calculate_watt_hours(soc_df)
+            watt_hours.append(watt_h)
 
         # Plot the results
         soc_labels = [f'{start}-{end}' for start, end in soc_ranges]
@@ -393,11 +401,21 @@ def Influx_LX70_input(input_folder_path):
         plt.xlabel('SOC Range')
         plt.ylabel('Distance (km)')
         plt.title('Distance covered based on SOC ranges')
-        for i, v in enumerate(distances):
-            plt.text(i, v + 0.1, f'{v:.2f}', ha='center')
+   
+        for i, (dist, watt_h) in enumerate(zip(distances, watt_hours)):   
+            if(i==0):   
+                plt.text(i, dist + 0.5, f'{dist:.2f} Km ', ha='center', color='green')
+                plt.text(i, dist + 0.2, f'{watt_h:.2f} Wh ', ha='center', color='red')
+            
+            else: 
+                plt.text(i, dist + 0.4, f'{dist:.2f} ', ha='center', color='green')
+                plt.text(i, dist + 0.1, f'{watt_h:.2f} ', ha='center', color='red')
+            
         file_plot = f"{subfolder_path}/SOC_based_distance_covered.png"
         plt.savefig(file_plot)
-        plt.show()
+        plt.close()
+       
+        
 
         if 'GROUND_DISTANCE' in data.columns:
         ###########Calculating the Distance based on Ground Distance from GPS Module data
