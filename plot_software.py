@@ -715,8 +715,8 @@ class PlotApp:
         def update_live_values(sel):
             """Update live values whenever the cursor hovers over the plot."""
             if sel.artist is not None:
-                # Retrieve X value directly from the cursor selection
-                x_val, _ = sel.target
+                # Retrieve X and Y values directly from the cursor selection
+                x_val, y_val = sel.target
 
                 # Update vertical line position
                 self.vertical_line.set_xdata([x_val, x_val])  # Update only x data of the vertical line
@@ -724,13 +724,12 @@ class PlotApp:
                 # Initialize label for X-axis
                 x_label_text = f"X-axis value: {x_val}"
 
-                # Check if X data is datetime
+                # Check if the X data is in datetime format
                 x_data = sel.artist.get_xdata()
                 if np.issubdtype(x_data.dtype, np.datetime64):
                     # Convert x_data to Matplotlib's numeric date format for comparison
                     numeric_x_data = mdates.date2num(x_data)
                     closest_index = np.argmin(np.abs(numeric_x_data - x_val))
-
                     # Convert x_val to readable datetime format
                     x_val = mdates.num2date(x_val).strftime('%Y-%m-%d %H:%M:%S')
                     x_label_text = f"X-axis value: {x_val}"
@@ -739,7 +738,7 @@ class PlotApp:
                     closest_index = np.argmin(np.abs(x_data - x_val))
 
                 # Update the X-axis label in the live window
-                label_x.config(text=x_label_text)
+                label_x.config(text=f"X-axis value: {x_val}")
 
                 # Update all Y-axis values for the given X position
                 for col, line in self.lines.items():
@@ -752,12 +751,17 @@ class PlotApp:
                     # Update the Y-axis label with the parameter name and value
                     label_y[col].config(text=f"{col}: {y_val:.2f}")
 
+                # Ensure the mplcursor value matches live updates
+                sel.annotation.set_text(f"X: {x_val}\n{col}: {y_val:.2f}")
+
                 # Redraw the plot to reflect the updated vertical line
                 self.fig.canvas.draw_idle()
 
-        cursor.connect("add", update_live_values)
 
-        # Show the plot
+        # Connect the update function to the cursor hover event
+        cursor.connect("add", update_live_values)
+        
+        # Setup the canvas and toolbar
         self.setup_canvas_toolbar()
 
         # Capture zoomed values dynamically
