@@ -408,6 +408,13 @@ class PlotApp:
                     # Update labels in the UI
                     self.first_x_label.config(text=f"First X-axis Value: {first_value}")
                     self.last_x_label.config(text=f"Last X-axis Value: {last_value}")
+
+                    # Autofill the text boxes with the loaded values
+                    self.custom_x_min_entry.delete(0, tk.END)
+                    self.custom_x_min_entry.insert(0, str(first_value))
+
+                    self.custom_x_max_entry.delete(0, tk.END)
+                    self.custom_x_max_entry.insert(0, str(last_value))
                 else:
                     print("No valid x-axis column found.")
 
@@ -684,6 +691,9 @@ class PlotApp:
         # Add interactive data cursors (continuous mode)
         cursor = mplcursors.cursor(self.fig, hover=True)
 
+        # Disable annotations from being shown
+        cursor.connect("add", lambda sel: sel.annotation.set_visible(False))  # Hide annotations when hovering
+
         # Create a vertical line for live tracking at the first x-axis limit
         initial_x = None
         for df in self.data_frames:
@@ -751,12 +761,11 @@ class PlotApp:
                     # Update the Y-axis label with the parameter name and value
                     label_y[col].config(text=f"{col}: {y_val:.2f}")
 
-                # Ensure the mplcursor value matches live updates
-                sel.annotation.set_text(f"X: {x_val}\n{col}: {y_val:.2f}")
+                    # Ensure the mplcursor annotation shows the correct parameter name
+                    sel.annotation.set_text(f"X: {x_val}\n{col}: {y_val:.2f}")
 
                 # Redraw the plot to reflect the updated vertical line
                 self.fig.canvas.draw_idle()
-
 
         # Connect the update function to the cursor hover event
         cursor.connect("add", update_live_values)
