@@ -23,7 +23,7 @@ input_data['DATETIME'] = pd.to_datetime(input_data['DATETIME'], format="%Y-%m-%d
 input_data.set_index('DATETIME', inplace=True)
 
 # Resample 'MotorSpeed [SA: 02]' to 1-second intervals using mean
-sampled_df = input_data['MotorSpeed [SA: 02]'].resample('1S').mean().reset_index()
+sampled_df = input_data['MotorSpeed [SA: 02]'].resample('1S').max().reset_index()
 
 # Define output file path
 output_file = os.path.join(os.path.dirname(input_file), f"resampled{file_extension}")
