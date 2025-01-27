@@ -197,6 +197,10 @@ class PlotApp:
         self.download_button = tk.Button(self.control_frame, text="Download Zoomed index as CSV", command=self.download_zoomed_csv)
         self.download_button.pack(pady=10)
 
+        # Button to download all the parameter in the table as HTML file
+        self.download_button = tk.Button(self.control_frame, text="Download all parameters Zoomed index as CSV", command=self.download_all_Parameter_in_zoomed_csv)
+        self.download_button.pack(pady=10)
+
         # To hold the extracted column names and their corresponding checkboxes
         self.column_names = []
         self.checkbox_vars = {}  # To store the checkbox variables for each column
@@ -607,6 +611,54 @@ class PlotApp:
         except Exception as e:
             print(f"Error while downloading zoomed data: {e}")
 
+    def get_zoomed_x_range(self):
+        """Returns the current zoomed x-axis range."""
+        # Ensure that the plot has an axes object to work with
+        if hasattr(self, 'ax'):
+            # Get the current x-axis limits from the axis object
+            x_min, x_max = self.ax.get_xlim()
+            return x_min, x_max
+        else:
+            print("Error: Plot axes object not found.")
+            return None, None
+
+    def download_all_Parameter_in_zoomed_csv(self):
+        """Exports the full data filtered by the zoomed x-axis range to a CSV file, including all parameters."""
+        try:
+            # Ensure full data exists (replace with actual variable holding full dataset)
+            if self.data is None or self.data.empty:
+                print("No data available to export.")
+                return
+
+            # Ensure the zoom range (x-axis values) is available
+            if hasattr(self, 'zoomed_x_min') and hasattr(self, 'zoomed_x_max'):
+                # Filter the full data based on the zoomed x-axis range
+                filtered_data = self.data[
+                    (self.data['DATETIME'] >= self.zoomed_x_min) & 
+                    (self.data['DATETIME'] <= self.zoomed_x_max)
+                ]
+            else:
+                # If no zoom range, use full data
+                filtered_data = self.data
+
+            # Prompt user to save the filtered data as CSV
+            file_path = filedialog.asksaveasfilename(
+                defaultextension=".csv",
+                filetypes=[("CSV files", "*.csv")],
+                title="Save CSV File"
+            )
+
+            if file_path:
+                # Save the filtered data (all parameters) to the CSV file
+                filtered_data.to_csv(file_path, index=False)
+                print(f"CSV file saved at: {file_path}")
+            else:
+                print("File save canceled.")
+
+        except Exception as e:
+            print(f"Error while downloading filtered data: {e}")
+
+
     def plot_columns(self, selected_columns, index_column, custom_x_min=None, custom_x_max=None):
         # Ensure the figure and axes are initialized
         if not hasattr(self, 'fig') or self.fig is None:
@@ -620,6 +672,9 @@ class PlotApp:
         self.fig, self.ax_primary = plt.subplots(figsize=(10, 6))
         self.y_axes = [self.ax_primary]  # Start with primary y-axis only
         self.lines = {}  # Dictionary to store line objects
+
+        # Add a horizontal line at y=0
+        self.ax_primary.axhline(y=0, color='black', linestyle='--', linewidth=1, label='y=0')
 
         # Plot each selected column
         for i, col in enumerate(selected_columns):
@@ -825,6 +880,12 @@ class PlotApp:
         else:
             self.data.set_index(selected_index_column, inplace=True)
 
+        # Use zoomed data if available, otherwise fall back to the full data
+        if hasattr(self, 'zoomed_data') and not self.zoomed_data.empty:
+            data_to_plot = self.zoomed_data
+        else:
+            data_to_plot = self.data
+
         # Plot using Plotly
         fig = make_subplots(specs=[[{"secondary_y": True}]])
 
@@ -832,7 +893,7 @@ class PlotApp:
         for i, col in enumerate(selected_columns):
             # Assign y-axis based on index (e.g., first column to 'y', second to 'y2', etc.)
             axis_name = f'y{i+1}' if i < 2 else f'y{i+2}'  # Primary ('y1') and secondary ('y2') for first two, then others
-            fig.add_trace(go.Scatter(x=self.data.index, y=self.data[col], name=col), secondary_y=(i > 0))
+            fig.add_trace(go.Scatter(x=data_to_plot.index, y=data_to_plot[col], name=col), secondary_y=(i > 0))
 
         # Add opacity modification dropdown
         fig.update_layout(
@@ -890,6 +951,7 @@ class PlotApp:
 
         # Automatically open the saved plot in the default web browser
         webbrowser.open('file://' + os.path.realpath(graph_path))  # Open the HTML file
+
 
     def toggle_column_visibility(self, column):
         """Toggle visibility of a plot line and its associated y-axis."""
