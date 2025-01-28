@@ -881,7 +881,8 @@ class PlotApp:
             messagebox.showerror("Error", "Please select columns and an index column.")
             return
 
-        save_path = filedialog.askdirectory()
+        # Prompt the user to select a folder and name the file
+        save_path = filedialog.asksaveasfilename(defaultextension='.html', filetypes=[("HTML Files", "*.html")])
         if not save_path:
             return
 
@@ -906,6 +907,11 @@ class PlotApp:
             # Assign y-axis based on index (e.g., first column to 'y', second to 'y2', etc.)
             axis_name = f'y{i+1}' if i < 2 else f'y{i+2}'  # Primary ('y1') and secondary ('y2') for first two, then others
             fig.add_trace(go.Scatter(x=data_to_plot.index, y=data_to_plot[col], name=col), secondary_y=(i > 0))
+
+        # Apply zoomed x-axis limits if available
+        if hasattr(self, 'zoomed_range') and self.zoomed_range:
+            x_min, x_max = self.zoomed_range
+            fig.update_xaxes(range=[x_min, x_max])
 
         # Add opacity modification dropdown
         fig.update_layout(
@@ -1019,10 +1025,10 @@ class PlotApp:
         # Pack canvas (only once)
         self.canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
 
-        # Create and pack the toolbar
-        toolbar = NavigationToolbar2Tk(self.canvas, self.plot_frame)
-        toolbar.update()
-        toolbar.pack(fill=tk.X)  # Pack toolbar along the x-axis
+        # # Create and pack the toolbar
+        # toolbar = NavigationToolbar2Tk(self.canvas, self.plot_frame)
+        # toolbar.update()
+        # toolbar.pack(fill=tk.X)  # Pack toolbar along the x-axis
 
         # Ensure canvas is correctly packed after the toolbar
         self.canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
