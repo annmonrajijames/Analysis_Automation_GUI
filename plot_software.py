@@ -787,10 +787,11 @@ class PlotApp:
                 self.vertical_line.set_xdata([x_val, x_val])  # Update only x data of the vertical line
 
                 # Initialize label for X-axis
-                x_label_text = f"X-axis value: {x_val}"
+                pass  # x_label_text is not used
 
                 # Check if the X data is in datetime format
                 x_data = sel.artist.get_xdata()
+                x_data = np.array(x_data)
                 if np.issubdtype(x_data.dtype, np.datetime64):
                     # Convert x_data to Matplotlib's numeric date format for comparison
                     numeric_x_data = mdates.date2num(x_data)
@@ -824,6 +825,13 @@ class PlotApp:
 
         # Connect the update function to the cursor hover event
         cursor.connect("add", update_live_values)
+
+        # Automatically close live window with the plot
+        def close_live_window(_):
+            live_window.destroy()  # Destroy live window when plot closes
+
+        # Attach the closing behavior to the figure's close event
+        self.fig.canvas.mpl_connect('close_event', close_live_window)
         
         # Setup the canvas and toolbar
         self.setup_canvas_toolbar()
@@ -860,6 +868,19 @@ class PlotApp:
 
         # Connect the zoom callback
         self.fig.canvas.mpl_connect('draw_event', on_zoom)
+
+        # Store the original x-axis limits
+        self.original_xlim = self.ax_primary.get_xlim()
+
+        # Add a button callback to reset the zoom
+        def reset_zoom(*args):
+            self.ax_primary.set_xlim(self.original_xlim)
+            self.fig.canvas.draw_idle()
+
+        # Connect the button callback
+        toolbar = NavigationToolbar2Tk(self.canvas, self.plot_frame)
+        toolbar.update()
+        toolbar.home = reset_zoom
 
     def save_plot_as_html(self):
         selected_columns = [col for col, var in self.checkbox_vars.items() if var.get()]
