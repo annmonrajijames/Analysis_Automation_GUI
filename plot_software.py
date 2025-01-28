@@ -152,6 +152,9 @@ class PlotApp:
         self.x_axis_limits_frame = tk.Frame(self.control_frame)
         self.x_axis_limits_frame.pack(pady=10)
 
+        # Initialize the selected_columns_display label without displaying it on the UI
+        self.selected_columns_display = tk.Label(self.selected_columns_frame)
+
         self.first_x_label = tk.Label(self.x_axis_limits_frame, text="First X-axis Value: Not Loaded")
         self.first_x_label.pack(pady=5)
 
@@ -189,17 +192,15 @@ class PlotApp:
         self.opacity_slider.set(1.0)  # Default opacity is 100%
         self.opacity_slider.pack(pady=5)
 
-        # Button to download the graph as HTML file
-        self.download_button = tk.Button(self.control_frame, text="Download Graph as HTML", command=self.save_plot_as_html)
-        self.download_button.pack(pady=10)
+        self.download_graph_button = tk.Button(self.control_frame, text="Download Graph as HTML", command=self.save_plot_as_html)
+        self.download_graph_button.pack(pady=10)
 
-        # Button to download the graph as HTML file
-        self.download_button = tk.Button(self.control_frame, text="Download Zoomed index as CSV", command=self.download_zoomed_csv)
-        self.download_button.pack(pady=10)
+        self.download_zoomed_csv_button = tk.Button(self.control_frame, text="Download Zoomed index as CSV", command=self.download_zoomed_csv)
+        self.download_zoomed_csv_button.pack(pady=10)
 
-        # Button to download all the parameter in the table as HTML file
-        self.download_button = tk.Button(self.control_frame, text="Download all parameters Zoomed index as CSV", command=self.download_all_Parameter_in_zoomed_csv)
-        self.download_button.pack(pady=10)
+        self.download_all_parameters_button = tk.Button(self.control_frame, text="Download all parameters Zoomed index as CSV", command=self.download_all_Parameter_in_zoomed_csv)
+        self.download_all_parameters_button.pack(pady=10)
+
 
         # To hold the extracted column names and their corresponding checkboxes
         self.column_names = []
@@ -535,50 +536,59 @@ class PlotApp:
     def submit(self):
         # Get the columns that are checked
         selected_columns = [col for col, var in self.checkbox_vars.items() if var.get()]
-        print(f"Selected columns: {selected_columns}")
 
         # Get the selected index column from the dropdown
         selected_index_column = self.index_column_dropdown.get()
 
         if self.data_frames and selected_columns and selected_index_column:
-            # Clear previous selected columns checkboxes
+            # Display selected columns for verification
+            if hasattr(self, 'selected_columns_display'):
+                self.selected_columns_display.config(text="\n".join(selected_columns))
+
+            # Clear previous selected columns checkboxes (excluding the label)
             for widget in self.selected_columns_frame.winfo_children():
-                widget.destroy()
+                if widget != self.selected_columns_display:
+                    widget.destroy()
 
             # Create checkboxes for selected columns and bind them
             for col in selected_columns:
                 var = tk.IntVar(value=1)  # Start with the checkbox selected
                 checkbox = tk.Checkbutton(self.selected_columns_frame, text=col, variable=var)
                 checkbox.pack(anchor="w")
-                checkbox.bind("<Button-1>", lambda _, col=col: self.toggle_column_visibility(col))
+                checkbox.bind("<Button-1>", lambda event, col=col: self.toggle_column_visibility(col))
                 self.selected_checkbox_vars[col] = var  # Store the variable
 
-            if not hasattr(self, 'plot_window') or not self.plot_window.winfo_exists():
-                # Create a new plot window if it does not exist
-                self.plot_window = tk.Toplevel(self.root)
-                self.plot_window.title("Data Plot")
-                self.plot_window.geometry("800x600")  # Set the window size for the plot
+            if messagebox.askyesno("Confirm Plot", "Do you want to plot the selected columns?"):
+                if not hasattr(self, 'plot_window') or not self.plot_window.winfo_exists():
+                    self.plot_initialized = False
 
-                # Initialize plot components
-                self.fig = None
-                self.ax_primary = None
-                self.ax_secondary = None
-                self.ax_tertiary = None
-                self.plot_initialized = False
+                if not self.plot_initialized:
+                    # Initialize the plot window and plot the columns
+                    self.plot_columns(selected_columns, selected_index_column, self.file_directory)
+                    self.plot_initialized = True
+                else:
+                    # Update the plot with the selected columns
+                    self.update_plot(selected_columns)
 
-            # Proceed to plot the columns
-            # Store current zoom limits if they exist
-            if self.ax_primary is not None:
-                self.zoomed_x_min, self.zoomed_x_max = self.ax_primary.get_xlim()
+                # Store the original x-axis limits only the first time
+                if not hasattr(self, 'original_x_min') or not hasattr(self, 'original_x_max'):
+                    if self.ax_primary is not None:
+                        self.original_x_min, self.original_x_max = self.ax_primary.get_xlim()
 
-            self.plot_columns(selected_columns, selected_index_column, retain_zoom=True)
+                # Get the zoomed x-axis limits if they exist
+                if self.ax_primary is not None:
+                    self.zoomed_x_min, self.zoomed_x_max = self.ax_primary.get_xlim()
 
-            # Restore zoom limits if they were stored
-            if hasattr(self, 'zoomed_x_min') and hasattr(self, 'zoomed_x_max'):
-                self.ax_primary.set_xlim(self.zoomed_x_min, self.zoomed_x_max)
-                self.fig.canvas.draw_idle()
-        else:
-            messagebox.showerror("Error", "Please select columns and an index column.")
+                # Ensure the plot zooms according to the stored zoomed limits
+                if hasattr(self, 'zoomed_x_min') and hasattr(self, 'zoomed_x_max'):
+                    self.ax_primary.set_xlim(self.zoomed_x_min, self.zoomed_x_max)
+                    self.fig.canvas.draw_idle()
+
+            else:
+                messagebox.showerror("Error", "Please select columns and an index column.")
+
+
+
 
     def download_zoomed_csv(self):
         """Exports the zoomed data to a CSV file."""
