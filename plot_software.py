@@ -567,7 +567,16 @@ class PlotApp:
                 self.plot_initialized = False
 
             # Proceed to plot the columns
-            self.plot_columns(selected_columns, selected_index_column)
+            # Store current zoom limits if they exist
+            if self.ax_primary is not None:
+                self.zoomed_x_min, self.zoomed_x_max = self.ax_primary.get_xlim()
+
+            self.plot_columns(selected_columns, selected_index_column, retain_zoom=True)
+
+            # Restore zoom limits if they were stored
+            if hasattr(self, 'zoomed_x_min') and hasattr(self, 'zoomed_x_max'):
+                self.ax_primary.set_xlim(self.zoomed_x_min, self.zoomed_x_max)
+                self.fig.canvas.draw_idle()
         else:
             messagebox.showerror("Error", "Please select columns and an index column.")
 
@@ -598,13 +607,21 @@ class PlotApp:
     def get_zoomed_x_range(self):
         """Returns the current zoomed x-axis range."""
         # Ensure that the plot has an axes object to work with
-        if hasattr(self, 'ax'):
+        if hasattr(self, 'ax_primary'):
             # Get the current x-axis limits from the axis object
-            x_min, x_max = self.ax.get_xlim()
+            x_min, x_max = self.ax_primary.get_xlim()
             return x_min, x_max
         else:
             print("Error: Plot axes object not found.")
             return None, None
+
+    def store_initial_x_limits(self):
+        """Store the initial x-axis limits when the graph is plotted for the first time."""
+        if hasattr(self, 'ax_primary'):
+            self.initial_x_limits = self.ax_primary.get_xlim()
+            print(f"Initial x-axis limits stored: {self.initial_x_limits}")
+        else:
+            print("Error: Plot axes object not found.")
 
     def download_all_Parameter_in_zoomed_csv(self):
         """Exports the full data filtered by the zoomed x-axis range to a CSV file, including all parameters."""
@@ -642,8 +659,7 @@ class PlotApp:
         except Exception as e:
             print(f"Error while downloading filtered data: {e}")
 
-
-    def plot_columns(self, selected_columns, index_column, custom_x_min=None, custom_x_max=None):
+    def plot_columns(self, selected_columns, index_column, custom_x_min=None, custom_x_max=None, retain_zoom=False):
 
         # Ensure the figure and axes are initialized
         if not hasattr(self, 'fig') or self.fig is None:
@@ -724,6 +740,10 @@ class PlotApp:
         # If custom x-axis limits are given, apply them
         if custom_x_min is not None and custom_x_max is not None:
             self.ax_primary.set_xlim(custom_x_min, custom_x_max)
+
+        # If retain_zoom is True, apply the stored zoom limits
+        elif retain_zoom and hasattr(self, 'zoomed_x_min') and hasattr(self, 'zoomed_x_max'):
+            self.ax_primary.set_xlim(self.zoomed_x_min, self.zoomed_x_max)
 
         # Set the X-axis format to Date and Time
         elif isinstance(self.data_frames[0][index_column].iloc[0], (np.datetime64, pd.Timestamp)):
@@ -823,7 +843,10 @@ class PlotApp:
 
         # Attach the closing behavior to the figure's close event
         self.fig.canvas.mpl_connect('close_event', close_live_window)
-        
+
+        # Store current x-axis limits after zoom
+        cursor.connect("add", self.store_zoom_limits)
+            
         # Setup the canvas and toolbar
         self.setup_canvas_toolbar()
 
@@ -837,6 +860,9 @@ class PlotApp:
                 x_max = mdates.num2date(x_max).replace(tzinfo=None)
 
                 print(f"Zoomed Range: {x_min} to {x_max}")  # Debugging output
+
+                # Store the zoomed x-axis limits
+                self.zoomed_x_min, self.zoomed_x_max = x_min, x_max
 
                 # Collect data for all visible parameters within the zoomed range
                 zoomed_data_frames = []
@@ -867,11 +893,23 @@ class PlotApp:
         def reset_zoom(*args):
             self.ax_primary.set_xlim(self.original_xlim)
             self.fig.canvas.draw_idle()
+            self.store_initial_x_limits()  # Store initial x-axis limits after resetting zoom
 
         # Connect the button callback
-        toolbar = NavigationToolbar2Tk(self.canvas, self.plot_frame)
-        toolbar.update()
-        toolbar.home = reset_zoom
+        if not hasattr(self, 'toolbar') or not self.toolbar.winfo_exists():
+            self.toolbar = NavigationToolbar2Tk(self.canvas, self.plot_frame)
+            self.toolbar.update()
+            self.toolbar.home = reset_zoom
+
+        # Override the home button in the toolbar
+        def override_home():
+            reset_zoom()
+        self.toolbar.home = override_home
+
+    def store_zoom_limits(self, sel):
+        """Store the current zoom limits when the user zooms in/out."""
+        self.zoomed_x_min, self.zoomed_x_max = self.ax_primary.get_xlim()
+        print(f"Zoomed x-axis limits stored: {self.zoomed_x_min} to {self.zoomed_x_max}")
 
     def save_plot_as_html(self):
         selected_columns = [col for col, var in self.checkbox_vars.items() if var.get()]
