@@ -670,7 +670,6 @@ class PlotApp:
             print(f"Error while downloading filtered data: {e}")
 
     def plot_columns(self, selected_columns, index_column, custom_x_min=None, custom_x_max=None, retain_zoom=False):
-
         # Ensure the figure and axes are initialized
         if not hasattr(self, 'fig') or self.fig is None:
             self.fig, self.ax_primary = plt.subplots(figsize=(10, 6))
@@ -679,8 +678,6 @@ class PlotApp:
         else:
             self.ax_primary.clear()  # Safely clear the previous plot
 
-        # Create a new figure and primary axis
-        self.fig, self.ax_primary = plt.subplots(figsize=(10, 6))
         self.y_axes = [self.ax_primary]  # Start with primary y-axis only
         self.lines = {}  # Dictionary to store line objects
 
@@ -690,7 +687,6 @@ class PlotApp:
         # Plot each selected column
         for i, col in enumerate(selected_columns):
             for df in self.data_frames:
-
                 x = pd.to_datetime(df[index_column], errors='coerce').dt.tz_localize(None)
                 y = df[col]
 
@@ -755,7 +751,7 @@ class PlotApp:
         elif retain_zoom and hasattr(self, 'zoomed_x_min') and hasattr(self, 'zoomed_x_max'):
             self.ax_primary.set_xlim(self.zoomed_x_min, self.zoomed_x_max)
 
-        # Set the X-axis format to Date and Time
+        # Set the X-axis format to Date and Time if applicable
         elif isinstance(self.data_frames[0][index_column].iloc[0], (np.datetime64, pd.Timestamp)):
             self.ax_primary.xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m-%d %H:%M:%S'))
             self.ax_primary.xaxis.set_major_locator(mdates.AutoDateLocator())  # Automatically decide the date ticks
@@ -770,20 +766,20 @@ class PlotApp:
         # Disable annotations from being shown
         cursor.connect("add", lambda sel: sel.annotation.set_visible(False))  # Hide annotations when hovering
 
-        # Create a vertical line for live tracking at the first x-axis limit
-        initial_x = None
-        for df in self.data_frames:
-            if not df.empty and index_column in df.columns:
-                initial_x = df[index_column].values[0]
-                break  # Use the first valid x-value
+        # # Create a vertical line for live tracking at the first x-axis limit
+        # initial_x = None
+        # for df in self.data_frames:
+        #     if not df.empty and index_column in df.columns:
+        #         initial_x = df[index_column].values[0]
+        #         break  # Use the first valid x-value
 
-        if initial_x is not None:
-            self.vertical_line = self.ax_primary.axvline(x=initial_x, color='red', linestyle='--', linewidth=1)
-        else:
-            self.vertical_line = self.ax_primary.axvline(x=0, color='red', linestyle='--', linewidth=1)  # Fallback
+        # if initial_x is not None and self.influx_var.get() == "yes":
+        #     self.vertical_line = self.ax_primary.axvline(x=initial_x, color='red', linestyle='--', linewidth=1)
+        # else:
+        #     self.vertical_line = self.ax_primary.axvline(x=0, color='red', linestyle='--', linewidth=1)  # Fallback
 
-        # Debugging: Print the initial x-value
-        print(f"Initial vertical line position: {initial_x if initial_x is not None else 0}")
+        # # Debugging: Print the initial x-value
+        # print(f"Initial vertical line position: {initial_x if initial_x is not None else 0}")
 
         # Tkinter window for displaying live values
         live_window = tk.Toplevel(self.root)
@@ -805,10 +801,7 @@ class PlotApp:
                 x_val, y_val = sel.target
 
                 # Update vertical line position
-                self.vertical_line.set_xdata([x_val, x_val])  # Update only x data of the vertical line
-
-                # Initialize label for X-axis
-                pass  # x_label_text is not used
+                # self.vertical_line.set_xdata([x_val, x_val])  # Update only x data of the vertical line
 
                 # Check if the X data is in datetime format
                 x_data = sel.artist.get_xdata()
@@ -856,7 +849,7 @@ class PlotApp:
 
         # Store current x-axis limits after zoom
         cursor.connect("add", self.store_zoom_limits)
-            
+
         # Setup the canvas and toolbar
         self.setup_canvas_toolbar()
 
@@ -915,6 +908,7 @@ class PlotApp:
         def override_home():
             reset_zoom()
         self.toolbar.home = override_home
+
 
     def store_zoom_limits(self, sel):
         """Store the current zoom limits when the user zooms in/out."""
