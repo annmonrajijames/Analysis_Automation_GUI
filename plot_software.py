@@ -794,6 +794,9 @@ class PlotApp:
             label_y[col] = tk.Label(live_window, text=f"{col}: N/A")
             label_y[col].pack(padx=10, pady=5)
 
+        # Create a 'plus' symbol that follows the cursor
+        plus_marker, = self.ax_primary.plot([], [], '+', color='red', markersize=100, label='Cursor')  # '+' marker
+
         def update_live_values(sel):
             """Update live values whenever the cursor hovers over the plot."""
             if sel.artist is not None:
@@ -836,6 +839,9 @@ class PlotApp:
 
                 # Redraw the plot to reflect the updated vertical line
                 self.fig.canvas.draw_idle()
+
+                # Move the 'plus' symbol to the cursor position
+                plus_marker.set_data([x_val], [y_val])  # Update marker position
 
         # Connect the update function to the cursor hover event
         cursor.connect("add", update_live_values)
