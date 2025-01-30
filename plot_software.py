@@ -1052,28 +1052,32 @@ class PlotApp:
 
     def setup_canvas_toolbar(self):
         # Ensure plot_frame exists and is properly initialized
+        if not hasattr(self, 'plot_window') or not self.plot_window.winfo_exists():
+            self.plot_window = tk.Toplevel(self.root)  # Create the plot window if it doesn't exist
+
         if not hasattr(self, 'plot_frame') or not self.plot_frame.winfo_exists():
             self.plot_frame = tk.Frame(self.plot_window)
             self.plot_frame.pack(fill=tk.BOTH, expand=True)
 
-        # Remove old canvas
+        # Remove old canvas if it exists
         if hasattr(self, 'canvas') and isinstance(self.canvas, FigureCanvasTkAgg):
             self.canvas.get_tk_widget().destroy()
 
-        # Create new canvas and toolbar
+        # Create new canvas and associate it with the frame
         self.canvas = FigureCanvasTkAgg(self.fig, master=self.plot_frame)
         self.canvas.draw()  # Draw the initial plot
 
-        # Pack canvas (only once)
+        # Pack the canvas (ensure it's only packed once)
         self.canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
 
-        # # Create and pack the toolbar
+        # Optionally, create and pack the toolbar (if needed)
         # toolbar = NavigationToolbar2Tk(self.canvas, self.plot_frame)
         # toolbar.update()
         # toolbar.pack(fill=tk.X)  # Pack toolbar along the x-axis
 
-        # Ensure canvas is correctly packed after the toolbar
+        # Ensure the canvas is packed properly after the toolbar (if toolbar is included)
         self.canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
+
 
     def update_plot(self, selected_columns, retain_zoom=False):
         # Optionally save zoom state if required
