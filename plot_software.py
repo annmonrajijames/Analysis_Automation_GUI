@@ -795,7 +795,7 @@ class PlotApp:
             label_y[col].pack(padx=10, pady=5)
 
         # Create a 'plus' symbol that follows the cursor
-        plus_marker, = self.ax_primary.plot([], [], '|', color='red', markersize=100, label='Cursor')  # '+' marker
+        plus_marker, = self.ax_primary.plot([], [], '|', color='red', markersize=1000, label='Cursor')  # '+' marker
 
         def update_live_values(sel):
             """Update live values whenever the cursor hovers over the plot."""
