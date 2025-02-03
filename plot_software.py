@@ -1134,6 +1134,78 @@ class PlotApp:
         # Redraw the canvas
         self.fig.canvas.draw_idle()
 
+        # Tkinter window for displaying live values
+        live_window = tk.Toplevel(self.root)
+        live_window.title("Live Cursor Data")
+        live_window.geometry("300x200")
+
+        label_x = tk.Label(live_window, text="X-axis value: N/A")
+        label_x.pack(padx=10, pady=5)
+
+        label_y = {}
+        for col in selected_columns:
+            label_y[col] = tk.Label(live_window, text=f"{col}: N/A")
+            label_y[col].pack(padx=10, pady=5)
+
+        # Create a 'plus' symbol that follows the cursor
+        plus_marker, = self.ax_primary.plot([], [], '|', color='red', markersize=1000, label='Cursor')  # '+' marker
+
+        def update_live_values(sel):
+            """Update live values whenever the cursor hovers over the plot."""
+            if sel.artist is not None:
+                # Retrieve X and Y values directly from the cursor selection
+                x_val, y_val = sel.target
+
+                # Check if the X data is in datetime format
+                x_data = sel.artist.get_xdata()
+                x_data = np.array(x_data)
+                if np.issubdtype(x_data.dtype, np.datetime64):
+                    # Convert x_data to Matplotlib's numeric date format for comparison
+                    numeric_x_data = mdates.date2num(x_data)
+                    closest_index = np.argmin(np.abs(numeric_x_data - x_val))
+                    # Convert x_val to readable datetime format
+                    x_val = mdates.num2date(x_val).strftime('%Y-%m-%d %H:%M:%S')
+                else:
+                    # For non-datetime X values
+                    closest_index = np.argmin(np.abs(x_data - x_val))
+
+                # Update the X-axis label in the live window
+                label_x.config(text=f"X-axis value: {x_val}")
+
+                # Update all Y-axis values for the given X position
+                annotation_text = f"X: {x_val}\n"
+                for col, line in self.lines.items():
+                    # Extract the Y data for the current line
+                    y_data = line.get_ydata()
+
+                    # Retrieve the Y value at the closest X index
+                    y_val = y_data[closest_index]
+
+                    # Update the Y-axis label with the parameter name and value
+                    label_y[col].config(text=f"{col}: {y_val:.2f}")
+
+                    # Append to the annotation text
+                    annotation_text += f"{col}: {y_val:.2f}\n"
+
+                # Ensure the mplcursor annotation shows all parameter names and values
+                sel.annotation.set_text(annotation_text.strip())
+
+                # Redraw the plot to reflect the updated vertical line
+                self.fig.canvas.draw_idle()
+
+                # Move the 'plus' symbol to the cursor position
+                plus_marker.set_data([x_val], [y_val])  # Update marker position
+
+        # Connect the update function to the cursor hover event
+        cursor.connect("add", update_live_values)
+
+        # Automatically close live window with the plot
+        def close_live_window(_):
+            live_window.destroy()  # Destroy live window when plot closes
+
+        # Attach the closing behavior to the figure's close event
+        self.fig.canvas.mpl_connect('close_event', close_live_window)
+
 
 
 # Create the application window
