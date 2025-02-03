@@ -567,6 +567,8 @@ class PlotApp:
                     self.plot_columns(selected_columns, selected_index_column, self.file_directory)
                     self.plot_initialized = True
                 else:
+                    # Clear the existing plot
+                    # self.ax_primary.clear()
                     # Update the plot with the selected columns
                     self.update_plot(selected_columns)
 
@@ -670,6 +672,7 @@ class PlotApp:
             print(f"Error while downloading filtered data: {e}")
 
     def plot_columns(self, selected_columns, index_column, custom_x_min=None, custom_x_max=None, retain_zoom=False):
+        print("Random Data")
         # Ensure the figure and axes are initialized
         if not hasattr(self, 'fig') or self.fig is None:
             self.fig, self.ax_primary = plt.subplots(figsize=(10, 6))
@@ -761,25 +764,12 @@ class PlotApp:
         self.update_legends()
 
         # Add interactive data cursors (continuous mode)
-        cursor = mplcursors.cursor(self.fig, hover=True)
+        cursor = mplcursors.cursor([line for ax in self.y_axes for line in ax.get_lines()], hover=True)
 
         # Disable annotations from being shown
-        cursor.connect("add", lambda sel: sel.annotation.set_visible(False))  # Hide annotations when hovering
+        cursor.connect("add", lambda sel: sel.annotation.set_visible(True))  # Hide annotations when hovering
 
-        # # Create a vertical line for live tracking at the first x-axis limit
-        # initial_x = None
-        # for df in self.data_frames:
-        #     if not df.empty and index_column in df.columns:
-        #         initial_x = df[index_column].values[0]
-        #         break  # Use the first valid x-value
-
-        # if initial_x is not None and self.influx_var.get() == "yes":
-        #     self.vertical_line = self.ax_primary.axvline(x=initial_x, color='red', linestyle='--', linewidth=1)
-        # else:
-        #     self.vertical_line = self.ax_primary.axvline(x=0, color='red', linestyle='--', linewidth=1)  # Fallback
-
-        # # Debugging: Print the initial x-value
-        # print(f"Initial vertical line position: {initial_x if initial_x is not None else 0}")
+        self.fig.canvas.draw_idle()
 
         # Tkinter window for displaying live values
         live_window = tk.Toplevel(self.root)
@@ -803,9 +793,6 @@ class PlotApp:
                 # Retrieve X and Y values directly from the cursor selection
                 x_val, y_val = sel.target
 
-                # Update vertical line position
-                # self.vertical_line.set_xdata([x_val, x_val])  # Update only x data of the vertical line
-
                 # Check if the X data is in datetime format
                 x_data = sel.artist.get_xdata()
                 x_data = np.array(x_data)
@@ -815,7 +802,6 @@ class PlotApp:
                     closest_index = np.argmin(np.abs(numeric_x_data - x_val))
                     # Convert x_val to readable datetime format
                     x_val = mdates.num2date(x_val).strftime('%Y-%m-%d %H:%M:%S')
-                    x_label_text = f"X-axis value: {x_val}"
                 else:
                     # For non-datetime X values
                     closest_index = np.argmin(np.abs(x_data - x_val))
@@ -824,6 +810,7 @@ class PlotApp:
                 label_x.config(text=f"X-axis value: {x_val}")
 
                 # Update all Y-axis values for the given X position
+                annotation_text = f"X: {x_val}\n"
                 for col, line in self.lines.items():
                     # Extract the Y data for the current line
                     y_data = line.get_ydata()
@@ -834,8 +821,11 @@ class PlotApp:
                     # Update the Y-axis label with the parameter name and value
                     label_y[col].config(text=f"{col}: {y_val:.2f}")
 
-                    # Ensure the mplcursor annotation shows the correct parameter name
-                    sel.annotation.set_text(f"X: {x_val}\n{col}: {y_val:.2f}")
+                    # Append to the annotation text
+                    annotation_text += f"{col}: {y_val:.2f}\n"
+
+                # Ensure the mplcursor annotation shows all parameter names and values
+                sel.annotation.set_text(annotation_text.strip())
 
                 # Redraw the plot to reflect the updated vertical line
                 self.fig.canvas.draw_idle()
@@ -861,8 +851,10 @@ class PlotApp:
 
         # Capture zoomed values dynamically
         def on_zoom(event):
+            print("Zoom event triggered")
             """Callback to capture zoomed data."""
             if event.name == 'draw_event':  # Triggered after a zoom or pan
+                print("Zoom event detected")
                 # Get the current zoomed x-axis range
                 x_min, x_max = self.ax_primary.get_xlim()
                 x_min = mdates.num2date(x_min).replace(tzinfo=None)
@@ -894,6 +886,7 @@ class PlotApp:
 
         # Connect the zoom callback
         self.fig.canvas.mpl_connect('draw_event', on_zoom)
+        print("Plotting completed")
 
         # Store the original x-axis limits
         self.original_xlim = self.ax_primary.get_xlim()
@@ -1086,6 +1079,7 @@ class PlotApp:
 
 
     def update_plot(self, selected_columns, retain_zoom=False):
+        print("Updating plot with selected columns...")
         # Optionally save zoom state if required
         if retain_zoom:
             xlim = self.ax_primary.get_xlim()  # Store x-axis limits separately
@@ -1122,6 +1116,11 @@ class PlotApp:
         # Set x-axis label and title
         self.ax_primary.set_xlabel(self.index_column_dropdown.get())
         self.ax_primary.set_title("Updated Data Plot")
+
+        # Add interactive data cursors (continuous mode)
+        cursor = mplcursors.cursor([line for ax in self.y_axes for line in ax.get_lines()], hover=True)
+
+        cursor.connect("add", lambda sel: sel.annotation.set_visible(True))  # Hide annotations when hovering
 
         # Restore x-axis zoom if applicable
         if retain_zoom:

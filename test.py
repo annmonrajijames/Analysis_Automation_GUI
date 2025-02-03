@@ -320,11 +320,7 @@ class PlotApp:
  
                 # Drop any fully empty rows
                 self.data.dropna(how='all', inplace=True)
-#                 print("before")
-                # # Handle Serial Number addition if missing
-                # if 'Serial Number' not in self.data.columns:
-                #     self.data['Serial Number'] = range(1, len(self.data) + 1)
- 
+
                 if self.influx_var.get() == "yes":
                     messagebox.showinfo("Influx Data", "Influx data is given as input")
                     # Handle Time conversion if present
@@ -332,8 +328,6 @@ class PlotApp:
 
                     self.file_directory = self.process_file(file_path)
 
-
-                   
                     if file_path.endswith('.csv'):
                         # Load the CSV file directly
                         self.data = pd.read_csv(file_path)
@@ -343,17 +337,15 @@ class PlotApp:
                         self.data = pd.read_excel(file_path)
                         print("Excel file loaded",file_path)
 
-
-
-                    #For converting Datetime timestamp to Time format
-                    if 'DATETIME' not in self.data.columns:  #if 'DATETIME' not in column Present 
+                    # For converting Datetime timestamp to Time format
+                    if 'DATETIME' not in self.data.columns:  # if 'DATETIME' not in column Present 
                         print("Column datas",self.data.columns)
                         print("DATETIME column not present")
                         self.data['DATETIME'] = self.data['Time']
                     
                     if 'DATETIME' not in self.data.columns:
-                            print("DATETIME column not present, using Time column instead")
-                            self.data['DATETIME'] = pd.to_datetime(self.data['Time'], errors='coerce')
+                        print("DATETIME column not present, using Time column instead")
+                        self.data['DATETIME'] = pd.to_datetime(self.data['Time'], errors='coerce')
                     else:
                         self.data['DATETIME'] = pd.to_numeric(self.data['DATETIME'], errors='coerce')
                         self.data.dropna(subset=['DATETIME'], inplace=True)
@@ -361,7 +353,6 @@ class PlotApp:
 
                     # Adjust timezone (if needed)
                     self.data['DATETIME'] += pd.to_timedelta('5h30m')  # Adjust timezone to IST
-
 
                     print("GPS DATA AVAILABLE")
 
@@ -374,19 +365,17 @@ class PlotApp:
                     # Update the checkboxes with the full list of columns
                     self.update_checkboxes()
                     print(col.lower() for col in self.column_names)
-                    # filtered_index_columns = [col for col in self.column_names if col.lower() in ['serial number','datetime']]
                     filtered_index_columns = [col for col in self.column_names if col.lower() in ['datetime']]
 
                     # Populate the dropdown with filtered column names for index selection
                     self.index_column_dropdown['values'] = filtered_index_columns
 
-#  #######################
                 if self.influx_var.get() == "no":
                     messagebox.showinfo("Random Data", "Random data is given as input")
                     # Handle Time conversion if present
                     print("Input data is Random data")
                     
-                     # Store data for each file in the list
+                    # Store data for each file in the list
                     self.data_frames.append(self.data)
     
                     # Extract the column names
@@ -395,15 +384,9 @@ class PlotApp:
                     # Update the checkboxes with the full list of columns
                     self.update_checkboxes()
     
-                    # filtered_index_columns = [col for col in self.column_names if col.lower() in ['serial number']]
                     # Populate the dropdown with all column names for index selection
                     self.index_column_dropdown['values'] = self.column_names
                
-                #Filter only 'Serial Number' and 'Time' columns for index selection
-                
-
-                # filtered_index_columns = [col for col in self.column_names if col.lower() in ['datetime']]
-
                 # Fetch and print the first and last values of the x-axis (DATETIME or Time)
                 x_column = 'DATETIME' if 'DATETIME' in self.data.columns else 'Time' if 'Time' in self.data.columns else None
                 if x_column:
@@ -552,6 +535,7 @@ class PlotApp:
     def submit(self):
         # Get the columns that are checked
         selected_columns = [col for col, var in self.checkbox_vars.items() if var.get()]
+        print(f"Selected columns: {selected_columns}")
 
         # Get the selected index column from the dropdown
         selected_index_column = self.index_column_dropdown.get()
@@ -660,6 +644,7 @@ class PlotApp:
 
 
     def plot_columns(self, selected_columns, index_column, custom_x_min=None, custom_x_max=None):
+
         # Ensure the figure and axes are initialized
         if not hasattr(self, 'fig') or self.fig is None:
             self.fig, self.ax_primary = plt.subplots(figsize=(10, 6))
@@ -683,8 +668,6 @@ class PlotApp:
                 x = pd.to_datetime(df[index_column], errors='coerce').dt.tz_localize(None)
                 y = df[col]
 
-                
-
                 # Check if the DataFrame is empty or if the column doesn't exist
                 if df.empty:
                     print(f"Warning: DataFrame is empty for column: {col}")
@@ -697,6 +680,14 @@ class PlotApp:
                 if custom_x_min is not None and custom_x_max is not None:
                     mask = (x >= pd.to_datetime(custom_x_min)) & (x <= pd.to_datetime(custom_x_max))
                     x, y = x[mask], y[mask]
+
+                # Apply condition to filter out MotorSpeed [SA: 02] values greater than 9000
+                if col == "MotorSpeed [SA: 02]":
+                    print(f"Applying filter to {col}: values greater than 9000 will be excluded.")
+                    mask = y <= 9000
+                    x, y = x[mask], y[mask]
+                    print(f"Filtered x: {x[:5]}")  # Show first 5 x values after filtering
+                    print(f"Filtered y: {y[:5]}")  # Show first 5 y values after filtering
 
                 # Debugging: Print x and y values
                 print(f"Plotting column: {col}")
@@ -787,10 +778,11 @@ class PlotApp:
                 self.vertical_line.set_xdata([x_val, x_val])  # Update only x data of the vertical line
 
                 # Initialize label for X-axis
-                x_label_text = f"X-axis value: {x_val}"
+                pass  # x_label_text is not used
 
                 # Check if the X data is in datetime format
                 x_data = sel.artist.get_xdata()
+                x_data = np.array(x_data)
                 if np.issubdtype(x_data.dtype, np.datetime64):
                     # Convert x_data to Matplotlib's numeric date format for comparison
                     numeric_x_data = mdates.date2num(x_data)
@@ -824,6 +816,13 @@ class PlotApp:
 
         # Connect the update function to the cursor hover event
         cursor.connect("add", update_live_values)
+
+        # Automatically close live window with the plot
+        def close_live_window(_):
+            live_window.destroy()  # Destroy live window when plot closes
+
+        # Attach the closing behavior to the figure's close event
+        self.fig.canvas.mpl_connect('close_event', close_live_window)
         
         # Setup the canvas and toolbar
         self.setup_canvas_toolbar()
@@ -861,6 +860,19 @@ class PlotApp:
         # Connect the zoom callback
         self.fig.canvas.mpl_connect('draw_event', on_zoom)
 
+        # Store the original x-axis limits
+        self.original_xlim = self.ax_primary.get_xlim()
+
+        # Add a button callback to reset the zoom
+        def reset_zoom(*args):
+            self.ax_primary.set_xlim(self.original_xlim)
+            self.fig.canvas.draw_idle()
+
+        # Connect the button callback
+        toolbar = NavigationToolbar2Tk(self.canvas, self.plot_frame)
+        toolbar.update()
+        toolbar.home = reset_zoom
+
     def save_plot_as_html(self):
         selected_columns = [col for col, var in self.checkbox_vars.items() if var.get()]
         selected_index_column = self.index_column_dropdown.get()
@@ -869,7 +881,8 @@ class PlotApp:
             messagebox.showerror("Error", "Please select columns and an index column.")
             return
 
-        save_path = filedialog.askdirectory()
+        # Prompt the user to select a folder and name the file
+        save_path = filedialog.asksaveasfilename(defaultextension='.html', filetypes=[("HTML Files", "*.html")])
         if not save_path:
             return
 
@@ -894,6 +907,11 @@ class PlotApp:
             # Assign y-axis based on index (e.g., first column to 'y', second to 'y2', etc.)
             axis_name = f'y{i+1}' if i < 2 else f'y{i+2}'  # Primary ('y1') and secondary ('y2') for first two, then others
             fig.add_trace(go.Scatter(x=data_to_plot.index, y=data_to_plot[col], name=col), secondary_y=(i > 0))
+
+        # Apply zoomed x-axis limits if available
+        if hasattr(self, 'zoomed_range') and self.zoomed_range:
+            x_min, x_max = self.zoomed_range
+            fig.update_xaxes(range=[x_min, x_max])
 
         # Add opacity modification dropdown
         fig.update_layout(
@@ -1007,10 +1025,10 @@ class PlotApp:
         # Pack canvas (only once)
         self.canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
 
-        # Create and pack the toolbar
-        toolbar = NavigationToolbar2Tk(self.canvas, self.plot_frame)
-        toolbar.update()
-        toolbar.pack(fill=tk.X)  # Pack toolbar along the x-axis
+        # # Create and pack the toolbar
+        # toolbar = NavigationToolbar2Tk(self.canvas, self.plot_frame)
+        # toolbar.update()
+        # toolbar.pack(fill=tk.X)  # Pack toolbar along the x-axis
 
         # Ensure canvas is correctly packed after the toolbar
         self.canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
