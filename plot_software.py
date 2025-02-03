@@ -1080,6 +1080,7 @@ class PlotApp:
 
     def update_plot(self, selected_columns, retain_zoom=False):
         print("Updating plot with selected columns...")
+
         # Optionally save zoom state if required
         if retain_zoom:
             xlim = self.ax_primary.get_xlim()  # Store x-axis limits separately
@@ -1096,7 +1097,7 @@ class PlotApp:
         # Re-plot selected columns
         for i, col in enumerate(selected_columns):
             for df in self.data_frames:
-                x = df[self.index_column_dropdown.get()]
+                x = pd.to_datetime(df[self.index_column_dropdown.get()])  # Ensure x is datetime if needed
                 y = df[col]
 
                 # Reuse or create y-axes
@@ -1194,7 +1195,8 @@ class PlotApp:
                 self.fig.canvas.draw_idle()
 
                 # Move the 'plus' symbol to the cursor position
-                plus_marker.set_data([x_val], [y_val])  # Update marker position
+                if x_val is not None and y_val is not None:
+                    plus_marker.set_data([x_val], [y_val])  # Update marker position
 
         # Connect the update function to the cursor hover event
         cursor.connect("add", update_live_values)
