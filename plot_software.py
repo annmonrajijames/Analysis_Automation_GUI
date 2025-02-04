@@ -759,6 +759,17 @@ class PlotApp:
             self.ax_primary.xaxis.set_major_locator(mdates.AutoDateLocator())  # Automatically decide the date ticks
             self.fig.autofmt_xdate()  # Format the X-axis dates nicely
 
+        print("self.cursor_1",self.cursor)
+
+        try:
+            if self.cursor:
+                print("Removing existing data cursors...")
+                self.cursor.remove()
+               
+        except AttributeError:
+            print("No existing data cursors to remove.")
+            pass  # self.cursor does not exist yet
+
         # Update legends
         self.update_legends()
 
@@ -1096,6 +1107,8 @@ class PlotApp:
         for ax in self.y_axes[1:]:
             for line in ax.get_lines():
                 line.remove()
+        # Add a horizontal line at y=0
+        self.ax_primary.axhline(y=0, color='black', linestyle='--', linewidth=1, label='y=0')
 
         # Re-plot selected columns
         for i, col in enumerate(selected_columns):
