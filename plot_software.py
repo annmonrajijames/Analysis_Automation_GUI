@@ -25,6 +25,8 @@ class PlotApp:
         # Create a main canvas for the entire page
         self.main_canvas = tk.Canvas(root)
         self.main_canvas.pack(side="left", fill=tk.BOTH, expand=True)
+        
+        self.cursor = None  # Cursor for interactive data points
 
         # Add scrollbar to the canvas
         self.main_scrollbar = tk.Scrollbar(root, orient="vertical", command=self.main_canvas.yview)
@@ -761,10 +763,10 @@ class PlotApp:
         self.update_legends()
 
         # Add interactive data cursors (continuous mode)
-        cursor = mplcursors.cursor([line for ax in self.y_axes for line in ax.get_lines()], hover=True)
+        self.cursor = mplcursors.cursor([line for ax in self.y_axes for line in ax.get_lines()], hover=True)
 
         # Disable annotations from being shown
-        cursor.connect("add", lambda sel: sel.annotation.set_visible(True))  # Hide annotations when hovering
+        self.cursor.connect("add", lambda sel: sel.annotation.set_visible(True))  # Hide annotations when hovering
 
         self.fig.canvas.draw_idle()
 
@@ -835,7 +837,7 @@ class PlotApp:
                 plus_marker.set_data([x_val], [y_val])  # Update marker position
 
         # Connect the update function to the cursor hover event
-        cursor.connect("add", update_live_values)
+        self.cursor.connect("add", update_live_values)
 
         # Automatically close live window with the plot
         def close_live_window(_):
@@ -845,7 +847,7 @@ class PlotApp:
         self.fig.canvas.mpl_connect('close_event', close_live_window)
 
         # Store current x-axis limits after zoom
-        cursor.connect("add", self.store_zoom_limits)
+        self.cursor.connect("add", self.store_zoom_limits)
 
         # Setup the canvas and toolbar
         self.setup_canvas_toolbar()
@@ -1135,6 +1137,17 @@ class PlotApp:
         self.ax_primary.set_xlabel(self.index_column_dropdown.get())
         self.ax_primary.set_title("Updated Data Plot")
 
+        print("self.cursor_1",self.cursor)
+
+        try:
+            if self.cursor:
+                print("Removing existing data cursors...")
+                self.cursor.remove()
+               
+        except AttributeError:
+            print("No existing data cursors to remove.")
+            pass  # self.cursor does not exist yet
+
         # # Add interactive data cursors (continuous mode)
         # cursor = mplcursors.cursor([line for ax in self.y_axes for line in ax.get_lines()], hover=True)
 
@@ -1150,10 +1163,10 @@ class PlotApp:
         self.update_legends()
 
         # Add interactive data cursors (continuous mode)
-        cursor = mplcursors.cursor([line for ax in self.y_axes for line in ax.get_lines()], hover=True)
+        self.cursor = mplcursors.cursor([line for ax in self.y_axes for line in ax.get_lines()], hover=True)
 
         # Disable annotations from being shown
-        cursor.connect("add", lambda sel: sel.annotation.set_visible(True))  # Hide annotations when hovering
+        self.cursor.connect("add", lambda sel: sel.annotation.set_visible(True))  # Hide annotations when hovering
 
         self.fig.canvas.draw_idle()
 
@@ -1224,7 +1237,7 @@ class PlotApp:
                 plus_marker.set_data([x_val], [y_val])  # Update marker position
 
         # Connect the update function to the cursor hover event
-        cursor.connect("add", update_live_values)
+        self.cursor.connect("add", update_live_values)
 
         # Automatically close live window with the plot
         def close_live_window(_):
