@@ -18,6 +18,7 @@ class PlotApp:
     def __init__(self, root, input_file_name=None):
         self.root = root
         self.root.title("Data Plotter")
+        self.root.geometry("400x865+0+0") # Open the main window in the top-left corner (left corner)
 
         # Initialize selected_checkbox_vars
         self.selected_checkbox_vars = {}  # This stores the variables associated with the checkboxes for selected columns
@@ -220,7 +221,8 @@ class PlotApp:
         # Create a separate window for plotting
         self.plot_window = tk.Toplevel(self.root)
         self.plot_window.title("Data Plot")
-        self.plot_window.geometry("800x600")  # Set the window size for the plot
+        screen_width = self.root.winfo_screenwidth()  # Get the screen width
+        self.plot_window.geometry(f"900x864+{screen_width - 900}+0")  # Open the plot window in the top-right corner
         self.plot_frame = tk.Frame(self.plot_window)
         self.plot_frame.pack(fill=tk.BOTH, expand=True)
 
@@ -1247,11 +1249,11 @@ class PlotApp:
                     # Retrieve the Y value at the closest X index
                     y_val = y_data[closest_index]
 
-                    # Update the Y-axis label with the parameter name and value
-                    label_y[col].config(text=f"{col}: {y_val:.2f}")
-
-                    # Append to the annotation text
-                    annotation_text += f"{col}: {y_val:.2f}\n"
+                    # Update the Y-axis label only if the column exists in label_y
+                    if col in label_y:
+                        label_y[col].config(text=f"{col}: {y_val:.2f}")
+                        # Append to the annotation text
+                        annotation_text += f"{col}: {y_val:.2f}\n"
 
                 # Ensure the mplcursor annotation shows all parameter names and values
                 sel.annotation.set_text(annotation_text.strip())
@@ -1261,6 +1263,7 @@ class PlotApp:
 
                 # Move the 'plus' symbol to the cursor position
                 plus_marker.set_data([x_val], [y_val])  # Update marker position
+
 
         # Connect the update function to the cursor hover event
         self.cursor.connect("add", update_live_values)
