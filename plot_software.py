@@ -589,9 +589,6 @@ class PlotApp:
             else:
                 messagebox.showerror("Error", "Please select columns and an index column.")
 
-
-
-
     def download_zoomed_csv(self):
         """Exports the zoomed data to a CSV file."""
         try:
@@ -770,6 +767,10 @@ class PlotApp:
         cursor.connect("add", lambda sel: sel.annotation.set_visible(True))  # Hide annotations when hovering
 
         self.fig.canvas.draw_idle()
+
+        # Tkinter window for displaying live values
+        if hasattr(self, 'live_window') and self.live_window.winfo_exists():
+            self.live_window.destroy()  # Destroy old live window before creating a new one
 
         # Tkinter window for displaying live values
         live_window = tk.Toplevel(self.root)
@@ -1097,8 +1098,24 @@ class PlotApp:
         # Re-plot selected columns
         for i, col in enumerate(selected_columns):
             for df in self.data_frames:
-                x = pd.to_datetime(df[self.index_column_dropdown.get()])  # Ensure x is datetime if needed
+                try:
+                    # Convert the index column to datetime, using errors='coerce' to handle invalid values
+                    x = pd.to_datetime(df[self.index_column_dropdown.get()], errors='coerce')  # Convert to datetime
+
+                    # Handle cases where conversion results in NaT (invalid values)
+                    if x.isnull().any():
+                        print(f"Warning: Some values in {self.index_column_dropdown.get()} could not be converted to datetime.")
+                        x = x.dropna()  # Remove NaT values
+                except Exception as e:
+                    print(f"Error converting {self.index_column_dropdown.get()} to datetime: {e}")
+                    return
+
                 y = df[col]
+
+                # Ensure x and y have the same length
+                min_len = min(len(x), len(y))
+                x = x[:min_len]
+                y = y[:min_len]
 
                 # Reuse or create y-axes
                 if i >= len(self.y_axes):
@@ -1118,10 +1135,10 @@ class PlotApp:
         self.ax_primary.set_xlabel(self.index_column_dropdown.get())
         self.ax_primary.set_title("Updated Data Plot")
 
-        # Add interactive data cursors (continuous mode)
-        cursor = mplcursors.cursor([line for ax in self.y_axes for line in ax.get_lines()], hover=True)
+        # # Add interactive data cursors (continuous mode)
+        # cursor = mplcursors.cursor([line for ax in self.y_axes for line in ax.get_lines()], hover=True)
 
-        cursor.connect("add", lambda sel: sel.annotation.set_visible(True))  # Hide annotations when hovering
+        # cursor.connect("add", lambda sel: sel.annotation.set_visible(True))  # Hide annotations when hovering
 
         # Restore x-axis zoom if applicable
         if retain_zoom:
@@ -1132,8 +1149,17 @@ class PlotApp:
         # Update legends
         self.update_legends()
 
-        # Redraw the canvas
+        # Add interactive data cursors (continuous mode)
+        cursor = mplcursors.cursor([line for ax in self.y_axes for line in ax.get_lines()], hover=True)
+
+        # Disable annotations from being shown
+        cursor.connect("add", lambda sel: sel.annotation.set_visible(True))  # Hide annotations when hovering
+
         self.fig.canvas.draw_idle()
+
+        # Tkinter window for displaying live values
+        if hasattr(self, 'live_window') and self.live_window.winfo_exists():
+            self.live_window.destroy()  # Destroy old live window before creating a new one
 
         # Tkinter window for displaying live values
         live_window = tk.Toplevel(self.root)
@@ -1195,8 +1221,7 @@ class PlotApp:
                 self.fig.canvas.draw_idle()
 
                 # Move the 'plus' symbol to the cursor position
-                if x_val is not None and y_val is not None:
-                    plus_marker.set_data([x_val], [y_val])  # Update marker position
+                plus_marker.set_data([x_val], [y_val])  # Update marker position
 
         # Connect the update function to the cursor hover event
         cursor.connect("add", update_live_values)
@@ -1207,8 +1232,6 @@ class PlotApp:
 
         # Attach the closing behavior to the figure's close event
         self.fig.canvas.mpl_connect('close_event', close_live_window)
-
-
 
 # Create the application window
 if __name__ == "__main__":
