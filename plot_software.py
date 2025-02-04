@@ -759,13 +759,13 @@ class PlotApp:
             self.ax_primary.xaxis.set_major_locator(mdates.AutoDateLocator())  # Automatically decide the date ticks
             self.fig.autofmt_xdate()  # Format the X-axis dates nicely
 
-        print("self.cursor_1",self.cursor)
+        print("self.cursor_1", self.cursor)
 
         try:
             if self.cursor:
                 print("Removing existing data cursors...")
                 self.cursor.remove()
-               
+
         except AttributeError:
             print("No existing data cursors to remove.")
             pass  # self.cursor does not exist yet
@@ -786,16 +786,16 @@ class PlotApp:
             self.live_window.destroy()  # Destroy old live window before creating a new one
 
         # Tkinter window for displaying live values
-        live_window = tk.Toplevel(self.root)
-        live_window.title("Live Cursor Data")
-        live_window.geometry("300x200")
+        self.live_window = tk.Toplevel(self.root)
+        self.live_window.title("Live Cursor Data")
+        self.live_window.geometry("300x200")
 
-        label_x = tk.Label(live_window, text="X-axis value: N/A")
+        label_x = tk.Label(self.live_window, text="X-axis value: N/A")
         label_x.pack(padx=10, pady=5)
 
         label_y = {}
         for col in selected_columns:
-            label_y[col] = tk.Label(live_window, text=f"{col}: N/A")
+            label_y[col] = tk.Label(self.live_window, text=f"{col}: N/A")
             label_y[col].pack(padx=10, pady=5)
 
         # Create a 'plus' symbol that follows the cursor
@@ -852,7 +852,7 @@ class PlotApp:
 
         # Automatically close live window with the plot
         def close_live_window(_):
-            live_window.destroy()  # Destroy live window when plot closes
+            self.live_window.destroy()  # Destroy live window when plot closes
 
         # Attach the closing behavior to the figure's close event
         self.fig.canvas.mpl_connect('close_event', close_live_window)
@@ -1127,6 +1127,19 @@ class PlotApp:
 
                 y = df[col]
 
+                # Apply condition to filter out MotorSpeed [SA: 02] values greater than 9000
+                if col == "MotorSpeed [SA: 02]":
+                    print(f"Applying filter to {col}: values greater than 9000 will be excluded.")
+                    mask = y <= 9000
+                    x, y = x[mask], y[mask]
+                    print(f"Filtered x: {x[:5]}")  # Show first 5 x values after filtering
+                    print(f"Filtered y: {y[:5]}")  # Show first 5 y values after filtering
+
+                # Debugging: Print x and y values
+                print(f"Plotting column: {col}")
+                print(f"x: {x[:5]}")  # Show first 5 x values
+                print(f"y: {y[:5]}")  # Show first 5 y values
+
                 # Ensure x and y have the same length
                 min_len = min(len(x), len(y))
                 x = x[:min_len]
@@ -1188,16 +1201,16 @@ class PlotApp:
             self.live_window.destroy()  # Destroy old live window before creating a new one
 
         # Tkinter window for displaying live values
-        live_window = tk.Toplevel(self.root)
-        live_window.title("Live Cursor Data")
-        live_window.geometry("300x200")
+        self.live_window = tk.Toplevel(self.root)
+        self.live_window.title("Live Cursor Data")
+        self.live_window.geometry("300x200")
 
-        label_x = tk.Label(live_window, text="X-axis value: N/A")
+        label_x = tk.Label(self.live_window, text="X-axis value: N/A")
         label_x.pack(padx=10, pady=5)
 
         label_y = {}
         for col in selected_columns:
-            label_y[col] = tk.Label(live_window, text=f"{col}: N/A")
+            label_y[col] = tk.Label(self.live_window, text=f"{col}: N/A")
             label_y[col].pack(padx=10, pady=5)
 
         # Create a 'plus' symbol that follows the cursor
@@ -1254,7 +1267,7 @@ class PlotApp:
 
         # Automatically close live window with the plot
         def close_live_window(_):
-            live_window.destroy()  # Destroy live window when plot closes
+            self.live_window.destroy()  # Destroy live window when plot closes
 
         # Attach the closing behavior to the figure's close event
         self.fig.canvas.mpl_connect('close_event', close_live_window)
