@@ -686,7 +686,7 @@ class PlotApp:
         self.lines = {}  # Dictionary to store line objects
 
         # Add a horizontal line at y=0
-        self.ax_primary.axhline(y=0, color='black', linestyle='--', linewidth=1, label='y=0')
+        # self.ax_primary.axhline(y=0, color='black', linestyle='--', linewidth=1, label='y=0')
 
         # Plot each selected column
         for i, col in enumerate(selected_columns):
@@ -1110,7 +1110,7 @@ class PlotApp:
             for line in ax.get_lines():
                 line.remove()
         # Add a horizontal line at y=0
-        self.ax_primary.axhline(y=0, color='black', linestyle='--', linewidth=1, label='y=0')
+        # self.ax_primary.axhline(y=0, color='black', linestyle='--', linewidth=1, label='y=0')
 
         # Re-plot selected columns
         for i, col in enumerate(selected_columns):
