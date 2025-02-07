@@ -26,6 +26,13 @@ def Influx_LX70_input(input_folder_path):
     import tkinter as tk
     from tkinter import messagebox
 
+    # # Display a message box indicating that the analysis is ready
+    # root = tk.Tk()
+    # root.withdraw()  # Hide the main window
+    # messagebox.showinfo("Analysis Started", "The Data is being analyzed. Please wait for the results.")
+    # # root.after(1000, root.destroy)  # Automatically close the message box after 1 second
+    # # root.mainloop()
+
     window_size =5
 
     # List to store DataFrames from each CSV file

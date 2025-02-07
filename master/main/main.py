@@ -41,6 +41,9 @@ def reset_gui():
     run_button.config(state='disabled')
 
 def run_script():
+    process_label.config(text="Analysing is in progress!")
+    app.update_idletasks()  # Update the GUI to show the process label
+
     base_path = getattr(sys, '_MEIPASS', os.path.dirname(os.path.abspath(__file__)))
 
     if copy_var.get():
@@ -64,6 +67,8 @@ def run_script():
     if script in script_functions:
         script_functions[script](new_path)
         reset_gui()  # Reset the GUI after the script is run
+
+    process_label.config(text="")  # Clear the process label after the script is run
  
 def handle_copy_check():
     if copy_var.get():
@@ -120,5 +125,10 @@ copy_check.grid(row=2, column=1, padx=10, pady=5, sticky='w')  # Align to the le
 # Button to run the script (initially disabled)
 run_button = tk.Button(app, text="Run", command=run_script, bg="lightblue", fg="black", state='disabled')
 run_button.grid(row=3, columnspan=2, padx=10, pady=20)
+
+# Label to show the analysis status
+process_label = tk.Label(app, text="", bg="lightblue", fg="black")
+process_label.grid(row=4, columnspan=2, padx=10, pady=10)
+
  
 app.mainloop()
