@@ -41,7 +41,7 @@ def reset_gui():
     run_button.config(state='disabled')
 
 def run_script():
-    process_label.config(text="Analysing is in progress!")
+    process_label.config(text="Analysis is in progress!...")
     app.update_idletasks()  # Update the GUI to show the process label
 
     base_path = getattr(sys, '_MEIPASS', os.path.dirname(os.path.abspath(__file__)))

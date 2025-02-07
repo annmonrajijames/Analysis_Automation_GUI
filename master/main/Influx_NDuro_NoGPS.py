@@ -1573,7 +1573,7 @@ def Influx_NDuro_NoGPS_input(input_folder_path):
             # Display a message box indicating that the analysis is ready
             root = tk.Tk()
             root.withdraw()  # Hide the main window
-            messagebox.showinfo("Analysis Complete", "The analysis is ready and saved in Analysis.xlsx")
+            messagebox.showinfo("Analysis Complete", "The analysis is ready and saved as Analysis.xlsx")
             root.destroy()
     
         merge_data_and_save_to_excel(main_folder_path)

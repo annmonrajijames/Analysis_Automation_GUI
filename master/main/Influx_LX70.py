@@ -1462,7 +1462,7 @@ def Influx_LX70_input(input_folder_path):
             # Display a message box indicating that the analysis is ready
             root = tk.Tk()
             root.withdraw()  # Hide the main window
-            messagebox.showinfo("Analysis Complete", "The analysis is ready and saved in Analysis.xlsx")
+            messagebox.showinfo("Analysis Complete", "The analysis is ready and saved as Analysis.xlsx")
             root.destroy()
             print("Thank you, Analysis again! :)")
     
