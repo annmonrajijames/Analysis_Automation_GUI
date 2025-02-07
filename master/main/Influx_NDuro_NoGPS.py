@@ -23,10 +23,11 @@ def Influx_NDuro_NoGPS_input(input_folder_path):
     import plotly.graph_objs as go
     from plotly.subplots import make_subplots
     from datetime import datetime, timedelta
+    import tkinter as tk
+    from tkinter import messagebox
     
     window_size =5
     
-
     # List to store DataFrames from each CSV file
     dfs = []
     def haversine(lat1, lon1, lat2, lon2):
@@ -1562,6 +1563,11 @@ def Influx_NDuro_NoGPS_input(input_folder_path):
             merged_file_path = os.path.join(directory, 'Analysis.xlsx')
             merged_workbook.save(filename=merged_file_path)
             print("<----------------Analysis file is ready---------------->")
+            # Display a message box indicating that the analysis is ready
+            root = tk.Tk()
+            root.withdraw()  # Hide the main window
+            messagebox.showinfo("Analysis Complete", "The analysis is ready and saved in Analysis.xlsx")
+            root.destroy()
     
         merge_data_and_save_to_excel(main_folder_path)
     
