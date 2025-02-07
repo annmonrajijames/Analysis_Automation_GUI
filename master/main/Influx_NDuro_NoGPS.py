@@ -208,12 +208,7 @@ def Influx_NDuro_NoGPS_input(input_folder_path):
             max_column = max_columns_multiple[0]
     
         # Determine the maximum temperature occurrence in the selected column
-        # max_occurrence = data[max_column].value_counts().idxmax()
-    
-
-    
-    
-    
+        # max_occurrence = data[max_column].value_counts().idxmax()   
         ##################
         data['Power'] = data['PackCurr [SA: 06]'] * data['PackVol [SA: 06]']
 
@@ -246,7 +241,6 @@ def Influx_NDuro_NoGPS_input(input_folder_path):
         # Add the differences list as a new column 'CellDifference' in the DataFrame
         filtered_data_for_cell_balancing['DeltaCellVoltage'] = differences
     
-
         cell_voltage_diff = filtered_data_for_cell_balancing['DeltaCellVoltage'] .max()
         max_soc = filtered_data_for_cell_balancing['SOC [SA: 08]'].max()
         print()
@@ -257,64 +251,33 @@ def Influx_NDuro_NoGPS_input(input_folder_path):
         # Drop rows with missing values in 'SOCAh [SA: 08]' column
         data.dropna(subset=['SOCAh [SA: 08]'], inplace=True)
 
-        
-        if 'DATETIME' not in data.columns:  #if 'DATETIME' not in column Present  
-            # start_time_str = '01-08-24 14:16:00'  # Update this with your actual start time
-            start_time_str = data['Creation Time'].iloc[0][:14]  # Update this with your actual start time
-            # Parse the time, defaulting to ":00" if seconds are missing
-            start_time = datetime.strptime(start_time_str, '%d-%m-%y %H:%M')
-            print("Start_time--->",start_time)
+        # start_time_str = '01-08-24 14:16:00'  # Update this with your actual start time
+        start_time_str = data['Creation Time'].iloc[0][:14]  # Update this with your actual start time
+        # Parse the time, defaulting to ":00" if seconds are missing
+        start_time = datetime.strptime(start_time_str, '%d-%m-%y %H:%M')
+        print("Start_time--->",start_time)
 
+        # Function to convert fractional seconds to hh:mm:ss format
+        def convert_to_hhmmss(row, start_time):
+            # Calculate the time in seconds
+            seconds = row['Time'] 
+            # Add these seconds to the start time
+            new_time = start_time + timedelta(seconds=seconds)
+            # Return the time in 'dd-mm-yy hh:mm:ss' format
+            return new_time.strftime('%d-%m-%y %H:%M:%S')
 
+        # Apply the function to create a new column
+        data['DATETIME'] = data.apply(convert_to_hhmmss, start_time=start_time, axis=1)
 
-            
+        data['DATETIME'] = pd.to_datetime(data['DATETIME'])
 
-            # Function to convert fractional seconds to hh:mm:ss format
-            def convert_to_hhmmss(row, start_time):
-                # Calculate the time in seconds
-                seconds = row['Time'] 
-                # Add these seconds to the start time
-                new_time = start_time + timedelta(seconds=seconds)
-                # Return the time in 'dd-mm-yy hh:mm:ss' format
-                return new_time.strftime('%d-%m-%y %H:%M:%S')
+        data = data.dropna(subset=['DATETIME'])
+    
+        data['DATETIME'] = pd.to_datetime(data['DATETIME'], unit='s')   
 
-            # Apply the function to create a new column
-            data['DATETIME'] = data.apply(convert_to_hhmmss, start_time=start_time, axis=1)
+        data['DATETIME'] = pd.to_datetime(data['DATETIME'])
 
-            data['DATETIME'] = pd.to_datetime(data['DATETIME'])
-
-
-            data = data.dropna(subset=['DATETIME'])
-        
-            data['DATETIME'] = pd.to_datetime(data['DATETIME'], unit='s')
-        
-
-            data['DATETIME'] = pd.to_datetime(data['DATETIME'])
-
-            print("GPS DATA NOT AVAILABLE , SO USED CREATION TIME TO CALCULATE DATETIME")
-
-        
-        else:                                                                                       #if 'DATETIME' column Present 
-            data['DATETIME'] = pd.to_numeric(data['DATETIME'], errors='coerce')
-       
-            # Drop or handle NaN values
-            data = data.dropna(subset=['DATETIME'])
-        
-            # Convert the Unix timestamps to datetime
-            data['DATETIME'] = pd.to_datetime(data['DATETIME'], unit='s')
-        
-            # Print the converted DATETIME column
-            # data['DATETIME'] = pd.to_datetime(data['DATETIME'])
-
-            data['DATETIME'] = data['DATETIME'] + pd.to_timedelta('5h30m')
-
-            print("GPS DATA AVAILABLE")
-
-
- 
-        
-
-
+        print("USE CREATION TIME TO CALCULATE DATETIME")
 
         start_localtime = data['DATETIME'].min()
         end_localtime = data['DATETIME'].max()
@@ -341,8 +304,7 @@ def Influx_NDuro_NoGPS_input(input_folder_path):
 
         output_regen = os.path.join(subfolder_path, 'Only_Regen.csv')
         regen_df.to_csv(output_regen, index=False)
-
-        
+       
         max_regen = regen_df['PackCurr [SA: 06]'] .max()
         min_regen = regen_df['PackCurr [SA: 06]'] .min()
         avg_regen = regen_df['PackCurr [SA: 06]'] .mean()
