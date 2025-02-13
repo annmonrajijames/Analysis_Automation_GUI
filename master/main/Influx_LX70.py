@@ -23,15 +23,8 @@ def Influx_LX70_input(input_folder_path):
     import plotly.graph_objs as go
     from plotly.subplots import make_subplots
     from datetime import datetime, timedelta
-    import tkinter as tk
     from tkinter import messagebox
-
-    # # Display a message box indicating that the analysis is ready
-    # root = tk.Tk()
-    # root.withdraw()  # Hide the main window
-    # messagebox.showinfo("Analysis Started", "The Data is being analyzed. Please wait for the results.")
-    # # root.after(1000, root.destroy)  # Automatically close the message box after 1 second
-    # # root.mainloop()
+    import tkinter as tk
 
     window_size =5
 
@@ -135,6 +128,7 @@ def Influx_LX70_input(input_folder_path):
     
     # def analysis_Energy(log_file, km_file):
     def analysis_Energy(data,subfolder_path):
+        
         dayfirst=True
 
         # data = pd.read_csv(log_file)
@@ -201,6 +195,12 @@ def Influx_LX70_input(input_folder_path):
             print("Temperature difference: ",CellTempDiff)
 
         
+        if 'Motor_Temperature [SA: 03]' not in data.columns:
+            data['Motor_Temperature [SA: 03]'] = data['Motor_Temperature [SA: 03]'] = 0
+
+        if 'MCU_Temperature [SA: 03]' not in data.columns:
+            data['MCU_Temperature [SA: 03]'] = data['MCU_Temperature [SA: 03]'] = 0
+
         # Define the temperature columns
         temp_columns = [f'Temp{i} [SA: 0A]' for i in range(1, 9)]
 
@@ -253,35 +253,61 @@ def Influx_LX70_input(input_folder_path):
 
         # Add the differences list as a new column 'CellDifference' in the DataFrame
         data['DeltaCellVoltage'] = differences
-        # start_time_str = '01-08-24 14:16:00'  # Update this with your actual start time
-        start_time_str = data['Creation Time'].iloc[0][:14]  # Update this with your actual start time
-        # Parse the time, defaulting to ":00" if seconds are missing
-        start_time = datetime.strptime(start_time_str, '%d-%m-%y %H:%M')
-        print("Start_time--->",start_time)
-
-        # Function to convert fractional seconds to hh:mm:ss format
-        def convert_to_hhmmss(row, start_time):
-            # Calculate the time in seconds
-            seconds = row['Time'] 
-            # Add these seconds to the start time
-            new_time = start_time + timedelta(seconds=seconds)
-            # Return the time in 'dd-mm-yy hh:mm:ss' format
-            return new_time.strftime('%d-%m-%y %H:%M:%S')
-
-        # Apply the function to create a new column
-        data['DATETIME'] = data.apply(convert_to_hhmmss, start_time=start_time, axis=1)
-
-        data['DATETIME'] = pd.to_datetime(data['DATETIME'])
 
 
-        data = data.dropna(subset=['DATETIME'])
-    
-        data['DATETIME'] = pd.to_datetime(data['DATETIME'], unit='s')
-    
+            
+        if 'DATETIME' not in data.columns:  #if 'DATETIME' not in column Present 
+            # start_time_str = '01-08-24 14:16:00'  # Update this with your actual start time
+            start_time_str = data['Creation Time'].iloc[0][:14]  # Update this with your actual start time
+            # Parse the time, defaulting to ":00" if seconds are missing
+            start_time = datetime.strptime(start_time_str, '%d-%m-%y %H:%M')
+            print("Start_time--->",start_time)
 
-        data['DATETIME'] = pd.to_datetime(data['DATETIME'])
 
-        print("USE CREATION TIME TO CALCULATE DATETIME")
+
+            
+
+            # Function to convert fractional seconds to hh:mm:ss format
+            def convert_to_hhmmss(row, start_time):
+                # Calculate the time in seconds
+                seconds = row['Time'] 
+                # Add these seconds to the start time
+                new_time = start_time + timedelta(seconds=seconds)
+                # Return the time in 'dd-mm-yy hh:mm:ss' format
+                return new_time.strftime('%d-%m-%y %H:%M:%S')
+
+            # Apply the function to create a new column
+            data['DATETIME'] = data.apply(convert_to_hhmmss, start_time=start_time, axis=1)
+
+            data['DATETIME'] = pd.to_datetime(data['DATETIME'])
+
+
+            data = data.dropna(subset=['DATETIME'])
+        
+            data['DATETIME'] = pd.to_datetime(data['DATETIME'], unit='s')
+        
+
+            data['DATETIME'] = pd.to_datetime(data['DATETIME'])
+
+            print("GPS DATA NOT AVAILABLE , SO USED CREATION TIME TO CALCULATE DATETIME")
+
+        
+        else:                                                                       #if 'DATETIME' column Present 
+            data['DATETIME'] = pd.to_numeric(data['DATETIME'], errors='coerce')
+       
+            # Drop or handle NaN values
+            data = data.dropna(subset=['DATETIME'])
+        
+            # Convert the Unix timestamps to datetime
+            data['DATETIME'] = pd.to_datetime(data['DATETIME'], unit='s')
+        
+            # Print the converted DATETIME column
+            # data['DATETIME'] = pd.to_datetime(data['DATETIME'])
+
+            data['DATETIME'] = data['DATETIME'] + pd.to_timedelta('5h30m')
+
+            print("GPS DATA AVAILABLE")
+
 
         # plot_ghps(data,subfolder_path,max_column)
     
@@ -1459,7 +1485,7 @@ def Influx_LX70_input(input_folder_path):
             merged_file_path = os.path.join(directory, 'Analysis.xlsx')
             merged_workbook.save(filename=merged_file_path)
             print("<----------------Analysis file is ready ------------------>")
-            # Display a message box indicating that the analysis is ready
+             # Display a message box indicating that the analysis is ready
             root = tk.Tk()
             root.withdraw()  # Hide the main window
             messagebox.showinfo("Analysis Complete", "The analysis is ready and saved as Analysis.xlsx")
