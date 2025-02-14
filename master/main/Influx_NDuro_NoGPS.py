@@ -403,6 +403,9 @@ def Influx_NDuro_NoGPS_input(input_folder_path):
         plt.xlabel('SOC Range')
         plt.ylabel('Distance (km)')
         plt.title('Distance covered based on SOC ranges')
+
+        # Set fixed y-axis values
+        plt.yticks(range(0, int(max(distances)) + 2, 2))
         
         for i, (dist, watt_h) in enumerate(zip(distances, watt_hours)):   
             if(i==0):   
@@ -415,7 +418,7 @@ def Influx_NDuro_NoGPS_input(input_folder_path):
             
         file_plot = f"{subfolder_path}/SOC_based_distance_covered.png"
         plt.savefig(file_plot)
-        plt.close()
+        plt.clf()
         
 
         if 'GROUND_DISTANCE' in data.columns:
@@ -1294,6 +1297,7 @@ def Influx_NDuro_NoGPS_input(input_folder_path):
     
                 plot_file = f"{folder_path}/Time spent in Speed intervals.png"
                 plt.savefig(plot_file)
+                plt.clf()
                 # plt.show()
                 print(f"Idling and speed bar plot saved: {plot_file}")
     
@@ -1381,6 +1385,8 @@ def Influx_NDuro_NoGPS_input(input_folder_path):
         # Save the plot to the specified path
         plot_file = f"{save_path}/Current Distribution.png"
         plt.savefig(plot_file)
+
+        plt.clf()
         print("Current distribution Image saved")
         
         # plt.show()

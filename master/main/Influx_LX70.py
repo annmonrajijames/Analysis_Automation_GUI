@@ -74,7 +74,7 @@ def Influx_LX70_input(input_folder_path):
 
         
 
-        speed = data['MotorSpeed [SA: 02]'] * 0.0160
+        speed = data['MotorSpeed [SA: 02]'] * 0.0166
 
         data.set_index('DATETIME', inplace=True)  # Setting DATETIME as index
 
@@ -355,7 +355,7 @@ def Influx_LX70_input(input_folder_path):
         # print(data['localtime_Diff'])
         
     ###############Calculating the Distance based on RPM
-        data['Speed_kmh'] = data['MotorSpeed [SA: 02]'] * 0.0160
+        data['Speed_kmh'] = data['MotorSpeed [SA: 02]'] * 0.0166
         
         # Convert Speed to m/s
         data['Speed_ms'] = data['Speed_kmh'] / 3.6
@@ -410,6 +410,9 @@ def Influx_LX70_input(input_folder_path):
         plt.xlabel('SOC Range')
         plt.ylabel('Distance (km)')
         plt.title('Distance covered based on SOC ranges')
+
+        # Set fixed y-axis values
+        plt.yticks(range(0, int(max(distances)) + 2, 2))
    
         for i, (dist, watt_h) in enumerate(zip(distances, watt_hours)):   
             if(i==0):   
@@ -420,9 +423,10 @@ def Influx_LX70_input(input_folder_path):
                 plt.text(i, dist + 0.4, f'{dist:.2f} ', ha='center', color='green')
                 plt.text(i, dist + 0.1, f'{watt_h:.2f} ', ha='center', color='red')
             
-        file_plot = f"{subfolder_path}/SOC_based_distance_covered.png"
-        plt.savefig(file_plot)
-        plt.close()
+        plot_file = f"{subfolder_path}/SOC_based_distance_covered.png"
+        plt.savefig(plot_file)
+        plt.clf()
+        # plt.close()
        
         
 
@@ -659,7 +663,7 @@ def Influx_LX70_input(input_folder_path):
         speed_range_percentages = {}
     
         for range_ in speed_ranges:
-            speed_range_localtime = ((data['MotorSpeed [SA: 02]'] * 0.016 > range_[0]) & (data['MotorSpeed [SA: 02]'] * 0.016 < range_[1])).sum()
+            speed_range_localtime = ((data['MotorSpeed [SA: 02]'] * 0.0166 > range_[0]) & (data['MotorSpeed [SA: 02]'] * 0.0166 < range_[1])).sum()
             speed_range_percentage = (speed_range_localtime / len(data)) * 100
             speed_range_percentages[f"Time_{range_[0]}-{range_[1]} km/h(%)"] = speed_range_percentage
             print(f"Time_{range_[0]}-{range_[1]} km/h(%): {speed_range_percentage:.2f}%")
@@ -779,7 +783,7 @@ def Influx_LX70_input(input_folder_path):
         #         print("max_continuous_duration------->",max_continuous_duration)
         #         max_continuous_duration = current_max_duration
         #         cruising_rpm = speed
-        #         cruising_speed=speed*0.01606
+        #         cruising_speed=speed*0.016606
 
         #         if cruising_speed >1:
         #             cruise_speed=cruising_speed
@@ -796,20 +800,20 @@ def Influx_LX70_input(input_folder_path):
         print("The maximum motor speed in RPM is:", Max_motor_rpm)
 
         # Convert the maximum motor speed to speed using the given factor
-        peak_speed = Max_motor_rpm * 0.01606
+        peak_speed = Max_motor_rpm * 0.0166
 
-        avg_speed =avg_motor_rpm * 0.01606
+        avg_speed =avg_motor_rpm * 0.0166
 
         voltage_at_cutoff= data_resampled['PackVol [SA: 06]'].min()
 
-        avg_speed_with_idle =avg_motor_rpm * 0.016
+        avg_speed_with_idle =avg_motor_rpm * 0.0166
 
         filtered_data3 = data[data['MotorSpeed [SA: 02]']>0]
         average_current_withRegen_withoutIdling = filtered_data3['PackCurr [SA: 06]'].mean()
         
         
         average_rpm_without_idle = filtered_data3['MotorSpeed [SA: 02]'].mean()
-        avg_speed_without_idle =average_rpm_without_idle * 0.016
+        avg_speed_without_idle =average_rpm_without_idle * 0.0166
         print("Average RPM",average_rpm_without_idle)
 
         # average_current =data_resampled['PackCurr [SA``: 06]'].mean()
@@ -1213,6 +1217,7 @@ def Influx_LX70_input(input_folder_path):
 
                 plot_file = f"{folder_path}/Time spent in Speed intervals.png"
                 plt.savefig(plot_file)
+                plt.clf()
                 # plt.show()
                 print(f"Idling and speed bar plot saved: {plot_file}")
 
@@ -1301,6 +1306,7 @@ def Influx_LX70_input(input_folder_path):
         # Save the plot to the specified path
         plot_file = f"{save_path}/Current Distribution.png"
         plt.savefig(plot_file)
+        plt.clf()
         print("Current distribution Image saved")
         
         # plt.show()
