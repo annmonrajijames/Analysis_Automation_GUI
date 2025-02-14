@@ -366,7 +366,7 @@ def Influx_LX70_input(input_folder_path):
         total_distance_with_RPM = 0
 
         # Define SOC ranges
-        soc_ranges = [(1, 10), (10, 20), (20, 30), (30, 40), (40, 50), (50, 60), (60, 70), (70, 80), (80, 90), (90, 100)]
+        soc_ranges = [(0, 10), (10, 20), (20, 30), (30, 40), (40, 50), (50, 60), (60, 70), (70, 80), (80, 90), (90, 100)]
         soc_column = 'SOC [SA: 08]'
 
         for index, row in data.iterrows():

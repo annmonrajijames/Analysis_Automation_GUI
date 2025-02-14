@@ -356,7 +356,7 @@ def Influx_NDuro_NoGPS_input(input_folder_path):
         distance_per_mode = defaultdict(float)
 
         # Define SOC ranges
-        soc_ranges = [(1, 10), (10, 20), (20, 30), (30, 40), (40, 50), (50, 60), (60, 70), (70, 80), (80, 90), (90, 100)]
+        soc_ranges = [(0, 10), (10, 20), (20, 30), (30, 40), (40, 50), (50, 60), (60, 70), (70, 80), (80, 90), (90, 100)]
         soc_column = 'SOC [SA: 08]'
 
         total_distance_with_RPM = 0
