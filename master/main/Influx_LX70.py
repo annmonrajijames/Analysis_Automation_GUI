@@ -256,57 +256,40 @@ def Influx_LX70_input(input_folder_path):
 
 
             
-        if 'DATETIME' not in data.columns:  #if 'DATETIME' not in column Present 
-            # start_time_str = '01-08-24 14:16:00'  # Update this with your actual start time
-            start_time_str = data['Creation Time'].iloc[0][:14]  # Update this with your actual start time
-            # Parse the time, defaulting to ":00" if seconds are missing
-            start_time = datetime.strptime(start_time_str, '%d-%m-%y %H:%M')
-            print("Start_time--->",start_time)
-
-
-
-            
-
-            # Function to convert fractional seconds to hh:mm:ss format
-            def convert_to_hhmmss(row, start_time):
-                # Calculate the time in seconds
-                seconds = row['Time'] 
-                # Add these seconds to the start time
-                new_time = start_time + timedelta(seconds=seconds)
-                # Return the time in 'dd-mm-yy hh:mm:ss' format
-                return new_time.strftime('%d-%m-%y %H:%M:%S')
-
-            # Apply the function to create a new column
-            data['DATETIME'] = data.apply(convert_to_hhmmss, start_time=start_time, axis=1)
-
-            data['DATETIME'] = pd.to_datetime(data['DATETIME'])
-
-
-            data = data.dropna(subset=['DATETIME'])
         
-            data['DATETIME'] = pd.to_datetime(data['DATETIME'], unit='s')
+        # start_time_str = '01-08-24 14:16:00'  # Update this with your actual start time
+        start_time_str = data['Creation Time'].iloc[0][:14]  # Update this with your actual start time
+        # Parse the time, defaulting to ":00" if seconds are missing
+        start_time = datetime.strptime(start_time_str, '%d-%m-%y %H:%M')
+        print("Start_time--->",start_time)
+
+
+
         
 
-            data['DATETIME'] = pd.to_datetime(data['DATETIME'])
+        # Function to convert fractional seconds to hh:mm:ss format
+        def convert_to_hhmmss(row, start_time):
+            # Calculate the time in seconds
+            seconds = row['Time'] 
+            # Add these seconds to the start time
+            new_time = start_time + timedelta(seconds=seconds)
+            # Return the time in 'dd-mm-yy hh:mm:ss' format
+            return new_time.strftime('%d-%m-%y %H:%M:%S')
 
-            print("GPS DATA NOT AVAILABLE , SO USED CREATION TIME TO CALCULATE DATETIME")
+        # Apply the function to create a new column
+        data['DATETIME'] = data.apply(convert_to_hhmmss, start_time=start_time, axis=1)
 
-        
-        else:                                                                       #if 'DATETIME' column Present 
-            data['DATETIME'] = pd.to_numeric(data['DATETIME'], errors='coerce')
-       
-            # Drop or handle NaN values
-            data = data.dropna(subset=['DATETIME'])
-        
-            # Convert the Unix timestamps to datetime
-            data['DATETIME'] = pd.to_datetime(data['DATETIME'], unit='s')
-        
-            # Print the converted DATETIME column
-            # data['DATETIME'] = pd.to_datetime(data['DATETIME'])
+        data['DATETIME'] = pd.to_datetime(data['DATETIME'])
 
-            data['DATETIME'] = data['DATETIME'] + pd.to_timedelta('5h30m')
 
-            print("GPS DATA AVAILABLE")
+        data = data.dropna(subset=['DATETIME'])
+    
+        data['DATETIME'] = pd.to_datetime(data['DATETIME'], unit='s')
+    
+
+        data['DATETIME'] = pd.to_datetime(data['DATETIME'])
+
+        print("USED CREATION TIME OF INFLUX TO CALCULATE DATETIME")
 
 
         # plot_ghps(data,subfolder_path,max_column)
