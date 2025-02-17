@@ -74,7 +74,7 @@ def Influx_LX70_input(input_folder_path):
 
         
 
-        speed = data['MotorSpeed [SA: 02]'] * 0.0166
+        speed = data['MotorSpeed [SA: 02]'] * 0.0209
 
         data.set_index('DATETIME', inplace=True)  # Setting DATETIME as index
 
@@ -355,7 +355,7 @@ def Influx_LX70_input(input_folder_path):
         # print(data['localtime_Diff'])
         
     ###############Calculating the Distance based on RPM
-        data['Speed_kmh'] = data['MotorSpeed [SA: 02]'] * 0.0166
+        data['Speed_kmh'] = data['MotorSpeed [SA: 02]'] * 0.0209
         
         # Convert Speed to m/s
         data['Speed_ms'] = data['Speed_kmh'] / 3.6
@@ -663,7 +663,7 @@ def Influx_LX70_input(input_folder_path):
         speed_range_percentages = {}
     
         for range_ in speed_ranges:
-            speed_range_localtime = ((data['MotorSpeed [SA: 02]'] * 0.0166 > range_[0]) & (data['MotorSpeed [SA: 02]'] * 0.0166 < range_[1])).sum()
+            speed_range_localtime = ((data['MotorSpeed [SA: 02]'] * 0.0209 > range_[0]) & (data['MotorSpeed [SA: 02]'] * 0.0209 < range_[1])).sum()
             speed_range_percentage = (speed_range_localtime / len(data)) * 100
             speed_range_percentages[f"Time_{range_[0]}-{range_[1]} km/h(%)"] = speed_range_percentage
             print(f"Time_{range_[0]}-{range_[1]} km/h(%): {speed_range_percentage:.2f}%")
@@ -783,7 +783,7 @@ def Influx_LX70_input(input_folder_path):
         #         print("max_continuous_duration------->",max_continuous_duration)
         #         max_continuous_duration = current_max_duration
         #         cruising_rpm = speed
-        #         cruising_speed=speed*0.016606
+        #         cruising_speed=speed*0.0209
 
         #         if cruising_speed >1:
         #             cruise_speed=cruising_speed
@@ -800,20 +800,20 @@ def Influx_LX70_input(input_folder_path):
         print("The maximum motor speed in RPM is:", Max_motor_rpm)
 
         # Convert the maximum motor speed to speed using the given factor
-        peak_speed = Max_motor_rpm * 0.0166
+        peak_speed = Max_motor_rpm * 0.0209
 
-        avg_speed =avg_motor_rpm * 0.0166
+        avg_speed =avg_motor_rpm * 0.0209
 
         voltage_at_cutoff= data_resampled['PackVol [SA: 06]'].min()
 
-        avg_speed_with_idle =avg_motor_rpm * 0.0166
+        avg_speed_with_idle =avg_motor_rpm * 0.0209
 
         filtered_data3 = data[data['MotorSpeed [SA: 02]']>0]
         average_current_withRegen_withoutIdling = filtered_data3['PackCurr [SA: 06]'].mean()
         
         
         average_rpm_without_idle = filtered_data3['MotorSpeed [SA: 02]'].mean()
-        avg_speed_without_idle =average_rpm_without_idle * 0.0166
+        avg_speed_without_idle =average_rpm_without_idle * 0.0209
         print("Average RPM",average_rpm_without_idle)
 
         # average_current =data_resampled['PackCurr [SA``: 06]'].mean()
