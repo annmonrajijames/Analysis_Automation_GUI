@@ -8,7 +8,8 @@ import sys
 import Bytebeam_LX70
 import Bytebeam_LXS
 import Bytebeam_NDuro
-import Influx_LX70
+import Influx_LX70_single_stage
+import Influx_LX70_dual_stage
 import Influx_LXS
 # import Influx_NDuro
 import Influx_NDuro_NoGPS
@@ -57,7 +58,8 @@ def run_script():
         "Bytebeam_LX70.py": Bytebeam_LX70.Bytebeam_LX70_input,
         "Bytebeam_LXS.py": Bytebeam_LXS.Bytebeam_LXS_input,
         "Bytebeam_NDuro.py": Bytebeam_NDuro.Bytebeam_NDuro_input,
-        "Influx_LX70.py": Influx_LX70.Influx_LX70_input,
+        "Influx_LX70_single_stage.py": Influx_LX70_single_stage.Influx_LX70_single_stage,
+        "Influx_LX70_dual_stage.py": Influx_LX70_dual_stage.Influx_LX70_dual_stage,
         "Influx_LXS.py": Influx_LXS.Influx_LXS_input,
         # "Influx_NDuro.py": Influx_NDuro.Influx_NDuro_input,
         "Influx_NDuro_NoGPS.py": Influx_NDuro_NoGPS.Influx_NDuro_NoGPS_input,
@@ -93,7 +95,8 @@ scripts = {
     "Daily analysis LX70": "Bytebeam_LX70.py",
     "Daily analysis Enduro": "Bytebeam_NDuro.py",
     "Daily analysis LXS": "Bytebeam_LXS.py",
-    "Daily analysis Influx LX70" : "Influx_LX70.py",
+    "Daily analysis Influx LX70" : "Influx_LX70_single_stage.py",
+    "Daily analysis Influx LX70 Dual Stage" : "Influx_LX70_dual_stage.py",
     # "Daily analysis Influx Enduro" : "Influx_NDuro.py",
     "Daily analysis Influx LXS" : "Influx_LXS.py",
     "Daily analysis Influx NDuro NoGPS": "Influx_NDuro_NoGPS.py",
